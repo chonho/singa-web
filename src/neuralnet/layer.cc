@@ -649,12 +649,12 @@ void ReLULayer::ComputeGradient(Phase phase) {
 
 void RGBImageLayer::ParseRecords(Phase phase,
     const vector<Record>& records, Blob<float>* blob){
-  LOG(ERROR) << "rgb parser";
+  //LOG(ERROR) << "rgb parser";
   
   const vector<int>& s=blob->shape();
   auto images = Tensor4(&data_);
   const SingleLabelImageRecord& r=records.at(0).image(); 
-  LOG(ERROR) << r.shape().size();
+  //LOG(ERROR) << r.shape().size();
   
   Tensor<cpu, 3> raw_image(Shape3(r.shape(0),r.shape(1),r.shape(2)));
   AllocSpace(raw_image);
@@ -705,7 +705,7 @@ void RGBImageLayer::ParseRecords(Phase phase,
   FreeSpace(raw_image);
   if(cropsize_)
     FreeSpace(croped_image);
-  LOG(ERROR) << "rgb end parser";
+  //LOG(ERROR) << "rgb end parser";
   
 }
 void RGBImageLayer::Setup(const LayerProto& proto, int npartitions) {
@@ -812,6 +812,7 @@ void SoftmaxLossLayer::Setup(const LayerProto& proto, int npartitions) {
   scale_=proto.softmaxloss_conf().scale();
 }
 void SoftmaxLossLayer::ComputeFeature(Phase phase, Metric* perf) {
+  // CLEE what is dim_ = 10???
   Shape<2> s=Shape2(batchsize_, dim_);
   Tensor<cpu, 2> prob(data_.mutable_cpu_data(), s);
   Tensor<cpu, 2> src(srclayers_[0]->mutable_data(this)->mutable_cpu_data(), s);
@@ -833,6 +834,8 @@ void SoftmaxLossLayer::ComputeFeature(Phase phase, Metric* perf) {
         probvec.begin(), probvec.begin() + topk_,
         probvec.end(), std::greater<std::pair<float, int> >());
     // check if true label is in top k predictions
+    if( phase == 2 )
+       LOG(ERROR) << phase << ": " << probvec[0].second << ", " << label[n]; //CLEE
     for (int k = 0; k < topk_; k++) {
       if (probvec[k].second == static_cast<int>(label[n])) {
         precision++;
@@ -863,6 +866,7 @@ void SoftmaxLossLayer::ComputeGradient(Phase phase) {
 void InputLayer::ComputeFeature(Phase phase, Metric* perf){
    LOG(ERROR) << "input layer compute";
   
+   /* CLEE
    while(true){
       struct stat buffer;   
       if(stat(inputFilePath_.c_str(), &buffer) == 0){ // file exist
@@ -874,8 +878,14 @@ void InputLayer::ComputeFeature(Phase phase, Metric* perf){
       } 
       usleep(1000); //sleep for 1 second
    }
-   
-   
+   */ 
+      struct stat buffer;   
+      if(stat(inputFilePath_.c_str(), &buffer) == 0){ // file exist
+         Record& record = records_.at(0);
+         singa::ReadProtoFromBinaryFile(inputFilePath_.c_str(),&record);
+         //LOG(ERROR) << record.mutable_image()->shape().size();
+         //remove(inputFilePath_.c_str()); 
+      } 
 }
 
 void InputLayer::Setup(const LayerProto& proto, int npartitions) {
@@ -934,6 +944,7 @@ void OutputLayer::ComputeFeature(Phase phase, Metric* perf) {
     
       // write to file
       write << string(str_buffer);
+      LOG(ERROR) << str_buffer;
   
     }    
     probptr+=dim_;

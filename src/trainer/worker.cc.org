@@ -77,7 +77,6 @@ void Worker::InitLocalParams() {
       if (entry.second->version() < 0 )
         entry.second->InitValues(modelproto_.step());
 
-    /* CLEE
     Metric perf;
     // warmup training before put params to servers
     for (; step_ < modelproto_.warmup_steps(); step_++)
@@ -88,17 +87,14 @@ void Worker::InitLocalParams() {
           if (param->owner() == param->id())
             Put(param, step_);
     }
-    */
   }
   // wait owners in the same procs init params, then no get requests sent
-  /* CLEE
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   for (auto layer : train_net_->layers()) {
     if (layer->partition_id() == id_)
       for (auto param : layer->GetParams())
         Get(param, modelproto_.warmup_steps());
   }
-  */
 }
 
 void Worker::Checkpoint(int step, shared_ptr<NeuralNet> net) {
@@ -135,14 +131,11 @@ void ConnectStub(int grp, int id, Dealer* dealer, EntityType entity) {
 void Worker::Run() {
   
   LOG(ERROR) << "Worker (group = " << grp_id_ <<", id = " << id_ << ") start";
-
-  /* CLEE
   auto cluster = Cluster::Get();
   if (updater_==nullptr) {
     int svr_grp = grp_id_ / cluster->nworker_groups_per_server_group();
     CHECK(cluster->runtime()->JoinSGroup(grp_id_, id_, svr_grp));
   }
-  */
   dealer_ = new Dealer(2*thread_id_);
   ConnectStub(grp_id_, id_, dealer_, kWorkerParam);
   for (auto layer : train_net_->layers()) {
@@ -159,12 +152,13 @@ void Worker::Run() {
   InitLocalParams();
   Metric perf;
   while (!StopNow(step_)) {
+      
+    LOG(ERROR) << "testnow ";
 
     if (TestNow(step_)) {
-      CollectAll(test_net_, step_);
+      //CollectAll(test_net_, step_);
       Test(modelproto_.test_steps(), kTest, test_net_);
     }
-    /* CLEE
     if (ValidateNow(step_)) {
       //LOG(ERROR)<<"Validation at step "<<step;
       CollectAll(validation_net_, step_);
@@ -189,23 +183,17 @@ void Worker::Run() {
       Report("Train", perf);
       perf.Reset();
     }
-    */
-
     step_++;
   }
 
   // save the model
-  /* CLEE
   Checkpoint(step_, train_net_);
-  */
 
   // clean up
-  /* CLEE
   if(updater_ == nullptr) {
     int svr_grp = grp_id_ / cluster->nworker_groups_per_server_group();
     cluster->runtime()->LeaveSGroup(grp_id_, id_, svr_grp);
   }
-  */
   // notify the stub on worker stop
   Msg* msg=new Msg(Addr(grp_id_, id_, kWorkerParam), Addr(-1,-1, kStub));
   msg->set_type(kStop);
@@ -344,12 +332,10 @@ void Worker::Test(int nsteps, Phase phase, shared_ptr<NeuralNet> net) {
   for (int step = 0; step < nsteps; step++) {
     TestOneBatch(step, phase, net, &perf);
   }
-  /* CLEE
   if (phase == kValidation)
     Report("Validation", perf);
   else if (phase == kTest)
     Report("Test", perf);
-  */
 }
 
 bool Worker::DisplayNow(int step) const {
@@ -448,7 +434,7 @@ void BPWorker::TrainOneBatch(int step, Metric* perf) {
 }
 
 void BPWorker::TestOneBatch(int step, Phase phase,
-    	shared_ptr<NeuralNet> net, Metric* perf) {
+    shared_ptr<NeuralNet> net, Metric* perf) {
   Forward(step, phase, net, perf);
 }
 

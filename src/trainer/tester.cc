@@ -9,6 +9,7 @@
 #include "utils/common.h"
 #include "proto/common.pb.h"
 #include "trainer/trainer.h"
+#include "trainer/tester.h"
 #include "mshadow/tensor.h"
 
 
@@ -19,8 +20,8 @@ using std::queue;
 using namespace std::chrono;
 using std::make_shared;
 
-/***********************Trainer****************************/
-Trainer::~Trainer() {
+/***********************Tester****************************/
+Tester::~Tester() {
   // free Params (i.e., slices) in server shard
   for (auto entry : server_shard_)
     for (auto param : entry.second->shares)
@@ -28,7 +29,7 @@ Trainer::~Trainer() {
   delete router_;
 }
 
-void Trainer::RegisterDefaultClasses(const singa::ModelProto& model_conf) {
+void Tester::RegisterDefaultClasses(const singa::ModelProto& model_conf) {
   // register all implemented layers
   singa::NeuralNet::RegisterLayers();
   auto param_factory = Singleton<Factory<singa::Param>>::Instance();
@@ -37,55 +38,16 @@ void Trainer::RegisterDefaultClasses(const singa::ModelProto& model_conf) {
   updater_factory->Register("Updater", CreateInstance(SGDUpdater, Updater));
 }
 
-const vector<int> SliceParams(const vector<Param*>& params) {
-  // for load-balance among servers in a group and among server groups
-  int nserver_grps = Cluster::Get()->nserver_groups();
-  int nservers_per_grp = Cluster::Get()->nservers_per_group();
-  int lcm = LeastCommonMultiple(nserver_grps, nservers_per_grp);
-
-  // collect sizes of unique Params
-  std::vector<int> paramsize;
-  for (auto param : params)
-    if (param->id() == param->owner())
-      paramsize.push_back(param->size());
-  // slice into lcm pieces to achieve good load-balance for both intra-group
-  // partition (among servers in a group) and inter-group partition (each group
-  // is assgined a sub-set of slices)
-  auto param_slice = Slice(lcm, paramsize);
-  // construct map from Param ID to its slices <slice id, len>
-  std::unordered_map<int, vector<std::pair<int, int>>> paramid2slices;
-  vector<int> slices;
-  auto it = param_slice.begin();
-  int slice_id = 0;
-  for (auto param : params) {
-    if (param->id() == param->owner()) {
-      for (int len : *it) {
-        slices.push_back(len);
-        paramid2slices[param->id()].push_back(std::make_pair(slice_id++, len));
-      }
-      it++;
-    }
-  }
-  // add slice info for every Param
-  for (auto param : params)
-    for (auto entry : paramid2slices[param->owner()]) {
-      param->AddSlice(entry.first, entry.second);
-      LOG(INFO) << "param id " << param->id() << " owner=" << param->owner()
-        << ": " << entry.first << ", " << entry.second;
-    }
-  return slices;
-}
-
-void Trainer::SetupWorkerServer(
-    const ModelProto& model_conf,
-    const vector<Worker*>& workers,
-    const vector<Server*>& servers) {
+void Tester::SetupWorkerServer(
+	 const ModelProto& model_conf,
+  	 const vector<Worker*>& workers,
+   	 const vector<Server*>& servers) {
   auto cluster = Cluster::Get();
   int grp_size = cluster->nworkers_per_group();
   const auto& net_conf = model_conf.neuralnet();
   auto net = NeuralNet::Create(net_conf, kTrain, grp_size);
   // MUST do SliceParam before share param/net with others
-  auto slices = SliceParams(net->params());
+  //auto slices = SliceParams(net->params()); CLEE
   shared_ptr<NeuralNet> train_net, test_net, valid_net;
   int grp = workers.size() ? workers.at(0)->grp_id() : -1;
   if (grp == 0 && model_conf.test_steps()) {
@@ -126,15 +88,17 @@ void Trainer::SetupWorkerServer(
       prepare_param = false;
     }
   }
+  /*
   // partition among server groups, each group maintains one sub-set for sync
   auto slice2group = PartitionSlices(cluster->nserver_groups(), slices);
   for (auto server : servers)
     server->Setup(model_conf.updater(), &server_shard_, slice2group);
   // partition within one server group, each server updates for one sub-set
   slice2server_ = PartitionSlices(cluster->nservers_per_group(), slices);
+  */
 }
 
-vector<Server*> Trainer::CreateServers(int nthreads, const ModelProto& mconf) {
+vector<Server*> Tester::CreateServers(int nthreads, const ModelProto& mconf) {
   auto cluster = Cluster::Get();
   vector<Server*> servers;
   if (!cluster->has_server())
@@ -156,7 +120,7 @@ vector<Server*> Trainer::CreateServers(int nthreads, const ModelProto& mconf) {
   return servers;
 }
 
-vector<Worker*> Trainer::CreateWorkers(int nthreads, const ModelProto& mconf){
+vector<Worker*> Tester::CreateWorkers(int nthreads, const ModelProto& mconf){
   auto cluster=Cluster::Get();
   vector<Worker*> workers;
   if(!cluster->has_worker())
@@ -194,7 +158,7 @@ vector<Worker*> Trainer::CreateWorkers(int nthreads, const ModelProto& mconf){
   return workers;
 }
 
-void Trainer::Resume(ModelProto* modelConf) {
+void Tester::Resume(ModelProto* modelConf) {
   tinydir_dir dir;
   string folder = Cluster::Get()->checkpoint_folder();
   tinydir_open(&dir, folder.c_str());
@@ -231,8 +195,11 @@ void Trainer::Resume(ModelProto* modelConf) {
   tinydir_close(&dir);
 }
 
-void Trainer::Start(int job, bool resume,
-    const JobProto& jobConf, const SingaProto& singaConf) {
+void Tester::Start(int job,
+                   //int nthreads,
+                   bool resume,
+                   const JobProto& jobConf,
+                   const SingaProto& singaConf) {
   // register job to zookeeper at the beginning
   auto cluster = Cluster::Get(job, singaConf, jobConf.cluster());
   ModelProto model = jobConf.model();
@@ -258,8 +225,8 @@ void Trainer::Start(int job, bool resume,
     MPIQueues.push_back(make_shared<SafeQueue>());
 #endif
   vector<std::thread> threads;
-  for(auto server : servers)
-    threads.push_back(std::thread(&Server::Run, server));
+  //for(auto server : servers)
+  //  threads.push_back(std::thread(&Server::Run, server));
   for(auto worker : workers)
     threads.push_back(std::thread(&Worker::Run, worker));
   Run(workers, servers);
@@ -277,7 +244,7 @@ inline int bandwidth(int bytes, system_clock::time_point start) {
   return static_cast<int>(bytes*1000.f/duration.count());
 }
 
-void Trainer::Run(
+void Tester::Run(
     const vector<Worker*>& workers,
     const vector<Server*>& servers) {
   int nworkers = workers.size(), nservers = servers.size();
@@ -288,7 +255,7 @@ void Trainer::Run(
   // for sync among server groups
   auto start = std::chrono::system_clock::now();
   float trans_size = 0.f;  // total size of msg transferred since start time
-  int sync_server_id = 0;
+  // CLEE int sync_server_id = 0;
   int max_bandwidth = cluster->bandwidth();
   int nserver_grps = cluster->nserver_groups();
 
@@ -300,7 +267,7 @@ void Trainer::Run(
   while (!stop || !msg_queue.empty()) {
 
     // CLEE wait for request here???  
-
+    
     if (msg_queue.empty()) {
       // if the poll time is large, then the poller may not expire
       // if it is small, then many reminder messages will be sent which may
@@ -309,12 +276,15 @@ void Trainer::Run(
       if (poll.Terminated()) {
         LOG(ERROR) << "Connection broken!";
         exit(0);
-      } else if (sock == nullptr) {
+      } 
+      else if (sock == nullptr) {
+        /* CLEE
         if (nserver_grps > 1 && bandwidth(trans_size, start) < max_bandwidth) {
           Msg* msg = GenSyncReminderMsg(sync_server_id, servers);
           router_->Send(&msg);
           sync_server_id = (sync_server_id + 1) % nservers;
         }
+        */
         continue;
       }
       Msg* msg = router_->Receive();
@@ -359,14 +329,13 @@ void Trainer::Run(
         router_->Send(&msg);
       }
     }
-    stop = true;
   }
   LOG(ERROR) << "Stub in process " << procs_id_ << " stops";
   for (auto& entry : inter_dealers)
     delete entry.second;
 }
 
-Msg* Trainer::GenSyncReminderMsg(int server, const vector<Server*>& servers ) {
+Msg* Tester::GenSyncReminderMsg(int server, const vector<Server*>& servers ) {
   Msg* msg = new Msg();
   msg->set_src(Addr(-1,-1, kStub));
   msg->set_dst(Addr(servers[server]->grp_id(), servers[server]->id(), kServer));
@@ -374,7 +343,7 @@ Msg* Trainer::GenSyncReminderMsg(int server, const vector<Server*>& servers ) {
   return msg;
 }
 
-void Trainer::DisplayMetric(Msg** msg) {
+void Tester::DisplayMetric(Msg** msg) {
   Msg* msgg = *msg;
   // only display metrics from the first group
   if (AddrGrp(msgg->src()) == 0) {
@@ -389,7 +358,7 @@ void Trainer::DisplayMetric(Msg** msg) {
   DeleteMsg(msg);
 }
 
-Dealer* Trainer::CreateInterProcsDealer(int dst_procs) {
+Dealer* Tester::CreateInterProcsDealer(int dst_procs) {
   // forward to other procs
   auto cluster = Cluster::Get();
   auto dealer = new Dealer();
@@ -402,7 +371,7 @@ Dealer* Trainer::CreateInterProcsDealer(int dst_procs) {
   return dealer;
 }
 
-void Trainer::HandleLocalMsg(queue<Msg*>* msg_queue, Msg** msg) {
+void Tester::HandleLocalMsg(queue<Msg*>* msg_queue, Msg** msg) {
   Msg* msgg = *msg;
   int paramid = ParamID(msgg->trgt_val());
   int type = msgg->type();
@@ -443,7 +412,7 @@ void Trainer::HandleLocalMsg(queue<Msg*>* msg_queue, Msg** msg) {
   }
 }
 
-void Trainer::GenMsgs(int type, int version, ParamEntry* entry,
+void Tester::GenMsgs(int type, int version, ParamEntry* entry,
     Msg* msg, vector<Msg*> *ret) {
   int src_grp = AddrGrp(msg->src());
   int dst_grp = src_grp / Cluster::Get()->nworker_groups_per_server_group();
@@ -472,7 +441,7 @@ void Trainer::GenMsgs(int type, int version, ParamEntry* entry,
   }
 }
 
-const vector<Msg*> Trainer::HandleGet(ParamEntry* entry, Msg** msg) {
+const vector<Msg*> Tester::HandleGet(ParamEntry* entry, Msg** msg) {
   vector<Msg*> ret;
   int version = (*msg)->trgt_version();
   if (version > entry->next_version) {
@@ -483,7 +452,7 @@ const vector<Msg*> Trainer::HandleGet(ParamEntry* entry, Msg** msg) {
   return ret;
 }
 
-const vector<Msg*> Trainer::HandleUpdate(ParamEntry *entry, Msg** msg) {
+const vector<Msg*> Tester::HandleUpdate(ParamEntry *entry, Msg** msg) {
   vector<Msg*> ret;
   entry->num_update++;
   if (entry->num_update >= entry->num_local) {
@@ -506,7 +475,7 @@ const vector<Msg*> Trainer::HandleUpdate(ParamEntry *entry, Msg** msg) {
   return ret;
 }
 
-const vector<Msg*> Trainer::HandlePut(ParamEntry* entry, Msg** msg) {
+const vector<Msg*> Tester::HandlePut(ParamEntry* entry, Msg** msg) {
   vector<Msg*> ret;
   int version = (*msg)->trgt_version();
   GenMsgs(kPut, version, entry, *msg, &ret);
@@ -514,7 +483,7 @@ const vector<Msg*> Trainer::HandlePut(ParamEntry* entry, Msg** msg) {
   return ret;
 }
 
-void Trainer::HandleGetResponse(ParamEntry* entry, Msg** msg) {
+void Tester::HandleGetResponse(ParamEntry* entry, Msg** msg) {
   int version = (*msg)->trgt_version();
   int sliceid = SliceID((*msg)->trgt_val());
   auto param = entry->shares.at(0);
@@ -523,7 +492,7 @@ void Trainer::HandleGetResponse(ParamEntry* entry, Msg** msg) {
   DeleteMsg(msg);
 }
 
-void Trainer::HandleUpdateResponse(ParamEntry* entry, Msg** msg) {
+void Tester::HandleUpdateResponse(ParamEntry* entry, Msg** msg) {
   int version = (*msg)->trgt_version();
   int sliceid = SliceID((*msg)->trgt_val());
   auto param = entry->shares.at(0);

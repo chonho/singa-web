@@ -135,14 +135,12 @@ void ConnectStub(int grp, int id, Dealer* dealer, EntityType entity) {
 void Worker::Run() {
   
   LOG(ERROR) << "Worker (group = " << grp_id_ <<", id = " << id_ << ") start";
-
-  /* CLEE
   auto cluster = Cluster::Get();
+  /* CLEE
   if (updater_==nullptr) {
     int svr_grp = grp_id_ / cluster->nworker_groups_per_server_group();
     CHECK(cluster->runtime()->JoinSGroup(grp_id_, id_, svr_grp));
   }
-  */
   dealer_ = new Dealer(2*thread_id_);
   ConnectStub(grp_id_, id_, dealer_, kWorkerParam);
   for (auto layer : train_net_->layers()) {
@@ -154,6 +152,7 @@ void Worker::Run() {
       }
     }
   }
+  */
 
   step_ = modelproto_.step();
   InitLocalParams();
@@ -209,7 +208,7 @@ void Worker::Run() {
   // notify the stub on worker stop
   Msg* msg=new Msg(Addr(grp_id_, id_, kWorkerParam), Addr(-1,-1, kStub));
   msg->set_type(kStop);
-  dealer_->Send(&msg);  // use param dealer to send the stop msg
+  //dealer_->Send(&msg);  // use param dealer to send the stop msg
 
   LOG(ERROR) << "Worker (group = " <<grp_id_ << ", id = " << id_ << ") stops";
 }

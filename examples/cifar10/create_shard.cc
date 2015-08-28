@@ -86,7 +86,8 @@ void create_shard(const string& input_folder, const string& output_folder) {
   std::ifstream data_file((input_folder + "/test_batch.bin").c_str(),
       std::ios::in | std::ios::binary);
   CHECK(data_file) << "Unable to open test file.";
-  for (int itemid = 0; itemid < kCIFARBatchSize; ++itemid) {
+  for (int itemid = 0; itemid < 1; ++itemid) {
+  //for (int itemid = 0; itemid < kCIFARBatchSize; ++itemid) {
     read_image(&data_file, &label, str_buffer);
     image->set_label(label);
     image->set_pixel(str_buffer, kCIFARImageNBytes);
