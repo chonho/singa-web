@@ -6,9 +6,12 @@
 #include "utils/cluster.h"
 #include "utils/factory.h"
 #include "trainer/worker.h"
+#include <sys/stat.h>
 
 namespace singa {
 using std::thread;
+
+extern void setvalue(bool flag);
 
 Worker::Worker(int thread_id, int grp_id, int id):
   thread_id_(thread_id), grp_id_(grp_id), id_(id),
@@ -23,6 +26,7 @@ void Worker::Setup(
   validation_net_ = valid_net;
   test_net_ = test_net;
   auto cluster = Cluster::Get();
+  workspace_ = cluster->workspace();
   // if no server or user requires worker to do param update
   if (!(cluster->nserver_groups() && cluster->server_update())) {
     updater_ = Singleton<Factory<Updater>>::Instance()->Create("Updater");
@@ -158,13 +162,25 @@ void Worker::Run() {
   step_ = modelproto_.step();
   InitLocalParams();
   Metric perf;
-  while (!StopNow(step_)) {
+  //while (!StopNow(step_)) {
 
+    // CLEE
+    while(true) { 
+       struct stat buffer;
+       const string flagstr = workspace_ + "/flag.dat"; 
+       LOG(ERROR) << " --- clee: set flag for quite --- " << flagstr;
+       if(stat(flagstr.c_str(), &buffer)==0) { 
+          break;
+       }
+       TestOneBatch(step_, kTrain, train_net_, &perf);
+    }
+
+    /* CLEE
     if (TestNow(step_)) {
       CollectAll(test_net_, step_);
       Test(modelproto_.test_steps(), kTest, test_net_);
     }
-    /* CLEE
+
     if (ValidateNow(step_)) {
       //LOG(ERROR)<<"Validation at step "<<step;
       CollectAll(validation_net_, step_);
@@ -191,8 +207,8 @@ void Worker::Run() {
     }
     */
 
-    step_++;
-  }
+    //step_++;
+  //}
 
   // save the model
   /* CLEE

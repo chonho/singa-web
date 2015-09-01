@@ -299,8 +299,6 @@ void Trainer::Run(
   bool stop=false;
   while (!stop || !msg_queue.empty()) {
 
-    // CLEE wait for request here???  
-
     if (msg_queue.empty()) {
       // if the poll time is large, then the poller may not expire
       // if it is small, then many reminder messages will be sent which may
@@ -359,7 +357,6 @@ void Trainer::Run(
         router_->Send(&msg);
       }
     }
-    stop = true;
   }
   LOG(ERROR) << "Stub in process " << procs_id_ << " stops";
   for (auto& entry : inter_dealers)

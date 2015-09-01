@@ -834,8 +834,6 @@ void SoftmaxLossLayer::ComputeFeature(Phase phase, Metric* perf) {
         probvec.begin(), probvec.begin() + topk_,
         probvec.end(), std::greater<std::pair<float, int> >());
     // check if true label is in top k predictions
-    if( phase == 2 )
-       LOG(ERROR) << phase << ": " << probvec[0].second << ", " << label[n]; //CLEE
     for (int k = 0; k < topk_; k++) {
       if (probvec[k].second == static_cast<int>(label[n])) {
         precision++;
@@ -864,21 +862,21 @@ void SoftmaxLossLayer::ComputeGradient(Phase phase) {
 
 /***************Implementation for InputLayer**************************/
 void InputLayer::ComputeFeature(Phase phase, Metric* perf){
-   LOG(ERROR) << "input layer compute";
+   //LOG(ERROR) << "input layer compute";
   
-   /* CLEE
+   // CLEE 
    while(true){
       struct stat buffer;   
       if(stat(inputFilePath_.c_str(), &buffer) == 0){ // file exist
          Record& record = records_.at(0);
          singa::ReadProtoFromBinaryFile(inputFilePath_.c_str(),&record);
-         LOG(ERROR) << record.mutable_image()->shape().size();
-         remove(inputFilePath_.c_str()); 
+         //LOG(ERROR) << record.mutable_image()->shape().size();
+         //remove(inputFilePath_.c_str()); 
 	 break;
       } 
       usleep(1000); //sleep for 1 second
    }
-   */ 
+  /* 
       struct stat buffer;   
       if(stat(inputFilePath_.c_str(), &buffer) == 0){ // file exist
          Record& record = records_.at(0);
@@ -886,6 +884,7 @@ void InputLayer::ComputeFeature(Phase phase, Metric* perf){
          //LOG(ERROR) << record.mutable_image()->shape().size();
          //remove(inputFilePath_.c_str()); 
       } 
+  */
 }
 
 void InputLayer::Setup(const LayerProto& proto, int npartitions) {
@@ -904,7 +903,7 @@ void InputLayer::Setup(const LayerProto& proto, int npartitions) {
 /********** * Implementation for OutputLayer*************************/
  
 void OutputLayer::Setup(const LayerProto& proto, int npartitions) {
-  LOG(ERROR) << "output layer setup";
+  //LOG(ERROR) << "output layer setup";
   
   LossLayer::Setup(proto, npartitions);
   CHECK_EQ(srclayers_.size(),1);
@@ -918,7 +917,7 @@ void OutputLayer::Setup(const LayerProto& proto, int npartitions) {
   
 }
 void OutputLayer::ComputeFeature(Phase phase, Metric* perf) {
-  LOG(ERROR) << "output layer setup";
+  //LOG(ERROR) << "output layer setup";
   
   Shape<2> s=Shape2(batchsize_, dim_);
   Tensor<cpu, 2> prob(data_.mutable_cpu_data(), s);
@@ -936,22 +935,27 @@ void OutputLayer::ComputeFeature(Phase phase, Metric* perf) {
     std::partial_sort(
         probvec.begin(), probvec.begin() + topk_,
         probvec.end(), std::greater<std::pair<float, int> >());
+    char str_buffer[24] = "-----\n";
     for (auto it = probvec.begin(); it < probvec.begin() + topk_; it++) {
       float prob = it->first;
       int label = it->second;
-      char str_buffer[24];
-      snprintf(str_buffer, 24, "%d:%f\n", label, prob);
+      //char str_buffer[24];
+      snprintf(str_buffer, 24, "prob %d:%f\n", label, prob);
     
       // write to file
       write << string(str_buffer);
       LOG(ERROR) << str_buffer;
-  
     }    
+    snprintf(str_buffer, 24, "done");
+    write << string(str_buffer);
+    LOG(ERROR) << str_buffer;
+
     probptr+=dim_;
   }
 
   write.close();
   CHECK_EQ(probptr, prob.dptr+prob.shape.Size());
+
 }
   
 }  // namespace singa

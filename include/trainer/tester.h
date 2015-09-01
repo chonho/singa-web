@@ -35,6 +35,9 @@ class Tester{
    */
   void Start(int job, bool resume,
       const JobProto& jobConf, const SingaProto& singaConf);
+  
+  void Init(int job, bool resume,
+      const JobProto& jobConf, const SingaProto& singaConf);
 
  protected:
   /**

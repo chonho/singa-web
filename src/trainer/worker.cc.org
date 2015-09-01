@@ -152,9 +152,8 @@ void Worker::Run() {
   InitLocalParams();
   Metric perf;
   while (!StopNow(step_)) {
-      
-    LOG(ERROR) << "testnow ";
 
+    /* CLEE
     if (TestNow(step_)) {
       //CollectAll(test_net_, step_);
       Test(modelproto_.test_steps(), kTest, test_net_);
@@ -164,6 +163,7 @@ void Worker::Run() {
       CollectAll(validation_net_, step_);
       Test(modelproto_.validation_steps(), kValidation, validation_net_);
     }
+    */
     if (VisNow(step_)) {
       ExtractParam(step_, train_net_);
       if (test_net_ && modelproto_.vis_samples())

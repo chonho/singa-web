@@ -34,8 +34,8 @@ void Tester::RegisterDefaultClasses(const singa::ModelProto& model_conf) {
   singa::NeuralNet::RegisterLayers();
   auto param_factory = Singleton<Factory<singa::Param>>::Instance();
   param_factory->Register("Param", CreateInstance(Param, Param));
-  auto updater_factory = Singleton<Factory<singa::Updater>>::Instance();
-  updater_factory->Register("Updater", CreateInstance(SGDUpdater, Updater));
+  //auto updater_factory = Singleton<Factory<singa::Updater>>::Instance();
+  //updater_factory->Register("Updater", CreateInstance(SGDUpdater, Updater));
 }
 
 void Tester::SetupWorkerServer(
@@ -50,6 +50,7 @@ void Tester::SetupWorkerServer(
   //auto slices = SliceParams(net->params()); CLEE
   shared_ptr<NeuralNet> train_net, test_net, valid_net;
   int grp = workers.size() ? workers.at(0)->grp_id() : -1;
+  /* CLEE
   if (grp == 0 && model_conf.test_steps()) {
     // test are performed only by the first group
     test_net = NeuralNet::Create(net_conf, kTest, grp_size);
@@ -60,6 +61,8 @@ void Tester::SetupWorkerServer(
     valid_net = NeuralNet::Create(net_conf, kValidation, grp_size);
     valid_net->ShareParamsFrom(net);
   }
+  */
+
   bool prepare_param = true;
   for (auto worker : workers) {
     if (worker->grp_id() != grp) {
@@ -195,6 +198,34 @@ void Tester::Resume(ModelProto* modelConf) {
   tinydir_close(&dir);
 }
 
+void Tester::Init(int job,
+                   //int nthreads,
+                   bool resume,
+                   const JobProto& jobConf,
+                   const SingaProto& singaConf) {
+  // register job to zookeeper at the beginning
+  auto cluster = Cluster::Get(job, singaConf, jobConf.cluster());
+  ModelProto model = jobConf.model();
+  RegisterDefaultClasses(model);
+  if (resume)
+    Resume(&model);
+
+  router_ = new Router();
+  router_->Bind(kInprocRouterEndpoint);
+  const string hostip = cluster->hostip();
+  int port = router_->Bind("tcp://" + hostip + ":*");
+  // register endpoint to zookeeper
+  cluster->Register(getpid(), hostip + ":" + std::to_string(port));
+  
+  int nthreads = 1;
+  const vector<Worker*> workers = CreateWorkers(nthreads, model);
+  nthreads += workers.size();
+  const vector<Server*> servers = CreateServers(nthreads, model);
+  SetupWorkerServer(model, workers, servers);
+
+  LOG(ERROR) << "clee---";
+}
+
 void Tester::Start(int job,
                    //int nthreads,
                    bool resume,
@@ -213,7 +244,7 @@ void Tester::Start(int job,
   int port = router_->Bind("tcp://" + hostip + ":*");
   // register endpoint to zookeeper
   cluster->Register(getpid(), hostip + ":" + std::to_string(port));
-
+  
   int nthreads = 1;
   const vector<Worker*> workers = CreateWorkers(nthreads, model);
   nthreads += workers.size();
@@ -229,11 +260,11 @@ void Tester::Start(int job,
   //  threads.push_back(std::thread(&Server::Run, server));
   for(auto worker : workers)
     threads.push_back(std::thread(&Worker::Run, worker));
-  Run(workers, servers);
+  // CLEE Run(workers, servers);
   for(auto& thread : threads)
     thread.join();
-  for(auto server : servers)
-    delete server;
+  //for(auto server : servers)
+  //  delete server;
   for(auto worker : workers)
     delete worker;
 }
@@ -330,6 +361,7 @@ void Tester::Run(
       }
     }
   }
+
   LOG(ERROR) << "Stub in process " << procs_id_ << " stops";
   for (auto& entry : inter_dealers)
     delete entry.second;
