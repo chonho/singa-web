@@ -53,6 +53,10 @@ class Driver {
    */
   template<typename Subclass, typename Type>
   int RegisterWorker(const Type& type);
+  
+  // CLEE
+  template<typename Subclass, typename Type>
+  int RegisterClassifier(const Type& type);
   /**
    * Register a Param subclass.
    * @param type ID of the subclass. If called to register built-in subclasses,
@@ -93,6 +97,8 @@ class Driver {
 
  private:
   int job_id_;
+  int mode_; // CLEE
+  int num_classifiers_; // CLEE
   JobProto job_conf_;
   SingaProto singa_conf_;
 };
@@ -132,6 +138,13 @@ template<typename Subclass, typename Type>
 int Driver::RegisterWorker(const Type& type) {
   auto factory = Singleton<Factory<singa::Worker>>::Instance();
   factory->Register(type, CreateInstance(Subclass, Worker));
+  return 1;
+}
+//CLEE
+template<typename Subclass, typename Type>
+int Driver::RegisterClassifier(const Type& type) {
+  auto factory = Singleton<Factory<singa::Classifier>>::Instance();
+  factory->Register(type, CreateInstance(Subclass, Classifier));
   return 1;
 }
 

@@ -1,14 +1,15 @@
 ACLOCAL_AMFLAGS = -I config
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src \
+              -I$(top_srcdir)/include
 
 MSHADOW_FLAGS = -DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
 
 AC_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -Wno-unknown-pragmas \
               $(MSHADOW_FLAGS) -DCPU_ONLY=1 -funroll-loops
 
-INCLUDES = -I$(top_srcdir)/include
+#INCLUDES = -I$(top_srcdir)/include
 
 PROTOS := $(top_srcdir)/src/proto/singa.proto \
           $(top_srcdir)/src/proto/job.proto \
@@ -34,7 +35,9 @@ SINGA_SRCS := src/driver.cc \
               src/utils/blob.cc \
               src/trainer/server.cc \
               src/trainer/worker.cc \
+              src/trainer/classifier.cc \
               src/trainer/trainer.cc \
+              src/trainer/tester.cc \
               src/neuralnet/base_layer.cc \
               src/neuralnet/neuralnet.cc \
               src/neuralnet/optional_layer.cc \
@@ -56,7 +59,9 @@ SINGA_HDRS := include/singa.h \
               include/utils/tinydir.h \
               include/trainer/server.h \
               include/trainer/worker.h \
+              include/trainer/classifier.h \
               include/trainer/trainer.h \
+              include/trainer/tester.h \
               include/neuralnet/base_layer.h \
               include/neuralnet/layer.h \
               include/neuralnet/optional_layer.h \
@@ -92,6 +97,7 @@ singa_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -MMD -Wno-unknown-pragmas \
                  $(MSHADOW_FLAGS) -DCPU_ONLY=1 -funroll-loops -DTHREADED
 singa_LDFLAGS = -I./include \
                 -lsinga \
+                -lmicrohttpd \
                 -lglog  \
                 -lprotobuf \
                 -lrt \
@@ -109,6 +115,7 @@ singatool_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -MMD -Wno-unknown-pragm
                      -funroll-loops -DTHREADED
 singatool_LDFLAGS = -I./include \
                     -lsinga \
+                    -lmicrohttpd \
                     -lglog  \
                     -lprotobuf \
                     -lzookeeper_mt

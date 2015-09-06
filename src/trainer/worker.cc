@@ -160,16 +160,17 @@ void Worker::Run() {
   InitLocalParams();
   Metric perf;
   while (!StopNow(step_)) {
+    /* CLEE
     if (ValidateNow(step_)) {
       //LOG(ERROR)<<"Validation at step "<<step;
       CollectAll(validation_net_, step_);
       Test(job_conf_.valid_steps(), kValidation, validation_net_);
     }
     if (TestNow(step_)) {
-      //LOG(ERROR)<<"Test at step "<<step;
       CollectAll(test_net_, step_);
       Test(job_conf_.test_steps(), kTest, test_net_);
     }
+    */
 
     if (CheckpointNow(step_)) {
       CollectAll(train_net_, step_);

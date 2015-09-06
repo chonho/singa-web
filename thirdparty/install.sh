@@ -333,6 +333,44 @@ function install_zookeeper()
 	return 0;
 }
 
+function install_libmicrohttpd()
+{
+	'''
+        if [ ! -e "zookeeper-3.4.6.tar.gz" ]
+	then
+		wget http://www.comp.nus.edu.sg/~dbsystem/singa/assets/file/thirdparty/zookeeper-3.4.6.tar.gz;
+	fi
+
+	rm -rf zookeeper-3.4.6;
+        '''
+	tar zxvf libmicrohttpd.tar.gz;
+        mv libmicrohttpd-0.9.42 libmicrohttpd
+	cd libmicrohttpd;
+
+	if [ $# == 1 ]
+		then
+			echo "install libhttpd in $1";
+			./configure --prefix=$1;
+			make && sudo make install;
+		elif [ $# == 0 ]
+		then
+			echo "install libhttpd in default path";
+			./configure;
+			make && sudo make install;
+		else 
+			echo "wrong commands";
+	fi
+
+	if [ $? -ne 0 ]
+	then
+		cd ../../..;
+		return -1;
+	fi
+
+	cd ../../..;
+	return 0;
+}
+
 BIN=`dirname "${BASH_SOURCE-$0}"`
 BIN=`cd "$BIN">/dev/null; pwd`
 BASE=`cd "$BIN/..">/dev/null; pwd`
@@ -556,6 +594,27 @@ do
 		    if [ $? -ne 0 ] 
 		    then
 		        echo "ERROR during zookeeper installation" ;
+		        exit;
+		    fi  
+			shift
+		fi
+		;;
+	"libmicrohttpd")
+		echo "install libmicrohttpd";
+		if [[ $2 == */* ]];then
+			install_libmicrohttpd $2;
+		    if [ $? -ne 0 ] 
+		    then
+		        echo "ERROR during libmicrohttpd installation" ;
+		        exit;
+		    fi  
+			shift
+			shift
+		else
+			install_libmicrohttpd;
+		    if [ $? -ne 0 ] 
+		    then
+		        echo "ERROR during libmicrohttpd installation" ;
 		        exit;
 		    fi  
 			shift

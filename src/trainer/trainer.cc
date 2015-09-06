@@ -86,6 +86,8 @@ void Trainer::SetupWorkerServer(
     shared_ptr<NeuralNet> test_net = nullptr, valid_net = nullptr;
     if (grp_net.find(grp_id) == grp_net.end()) {
       if (grp_id == first_grp) {
+        LOG(ERROR) << "clee worker id:" << worker_id;
+        /*CLEE
         //  test are performed only by the first group now. TODO update.
         if (first_grp == 0 && job_conf.test_steps() && worker_id == 0) {
           test_net = NeuralNet::Create(net_conf, kTest, 1); // hard code for exp
@@ -96,6 +98,7 @@ void Trainer::SetupWorkerServer(
           valid_net = NeuralNet::Create(net_conf, kValidation, 1);
           valid_net->ShareParamsFrom(net);
         }
+        */
         grp_net[grp_id] = net;
       } else {
         grp_net[grp_id] = NeuralNet::Create(net_conf, kTrain, grp_size);
@@ -113,7 +116,7 @@ void Trainer::SetupWorkerServer(
         }
       }
     }
-    LOG(INFO) << "grp " << worker->grp_id() << ", worker "
+    LOG(ERROR) << "grp " << worker->grp_id() << ", worker "
       << worker->id() << " net " << grp_net[grp_id].get();
     worker->Setup(job_conf, grp_net[grp_id], valid_net, test_net);
   }

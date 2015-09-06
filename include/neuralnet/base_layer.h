@@ -34,6 +34,8 @@ class Layer {
   static Layer *Create(const LayerProto& proto);
   Layer() { }
   virtual ~Layer() {}
+
+  virtual void setTestImage(string testImgPath) {}
   /**
    * Setup layer properties.
    *

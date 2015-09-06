@@ -110,6 +110,7 @@ class NeuralNet {
 
   map<string, Layer*> name2layer_;
   map<int, Param*> paramid2param_;
+
 };
 }  // namespace singa
 #endif  // SINGA_NEURALNET_NEURALNET_H_

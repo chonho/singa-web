@@ -22,6 +22,8 @@ enum EntityType {
   kServer = 2;
   kStub = 3;
   kRuntime = 4;
+  kClassifierParam = 5;
+  kClassifierLayer = 6;
 };
 
 enum ConnectionType {
@@ -72,7 +74,7 @@ message Record {
     kSingleLabelImage = 0;
   }
   optional Type type = 1 [default = kSingleLabelImage];
-  optional string user_type =2;
+  //optional string user_type = 2;
   // configuration for
   optional SingleLabelImageRecord image = 5;
 }

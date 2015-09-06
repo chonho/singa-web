@@ -28,6 +28,14 @@ void Driver::Init(int argc, char **argv) {
   CHECK_NE(arg_pos, -1);
   ReadProtoFromTextFile(argv[arg_pos+1], &job_conf_);
 
+  arg_pos = ArgPos(argc, argv, "-mode");
+  mode_ = atoi(argv[arg_pos+1]);
+  
+  arg_pos = ArgPos(argc, argv, "-net");
+  num_classifiers_ = atoi(argv[arg_pos+1]);
+
+  LOG(ERROR) << "mode: " << mode_ << ", #net: " << num_classifiers_;
+
   // register layers
   RegisterLayer<BridgeDstLayer, int>(kBridgeDst);
   RegisterLayer<BridgeSrcLayer, int>(kBridgeSrc);
@@ -51,6 +59,9 @@ void Driver::Init(int argc, char **argv) {
   RegisterLayer<SoftmaxLossLayer, int>(kSoftmaxLoss);
   RegisterLayer<SplitLayer, int>(kSplit);
   RegisterLayer<TanhLayer, int>(kTanh);
+  
+  RegisterLayer<InputLayer, int>(kInput);
+  RegisterLayer<OutputLayer, int>(kOutput);
 #ifdef USE_LMDB
   RegisterLayer<LMDBDataLayer, int>(kLMDBData);
 #endif
@@ -73,6 +84,10 @@ void Driver::Init(int argc, char **argv) {
   // register workers
   RegisterWorker<BPWorker>(kBP);
   RegisterWorker<CDWorker>(kCD);
+  
+  //CLEE 
+  RegisterClassifier<BPClassifier>(kBP);
+  RegisterClassifier<CDClassifier>(kCD);
 
   // register params
   RegisterParam<Param>(0);
@@ -103,8 +118,49 @@ void Driver::Submit(bool resume, const JobProto& jobConf) {
   JobProto job;
   job.CopyFrom(jobConf);
   job.set_id(job_id_);
-  Trainer trainer;
-  trainer.Start(resume, singa_conf_, &job);
+
+  if( mode_ == 1 ) {
+  	Trainer trainer;
+  	trainer.Start(resume, singa_conf_, &job);
+  }
+  else if( mode_ == 2 ) { // CLEE add tester and classifier
+        
+  	Tester tester;
+        vector<Classifier*> classifiers;
+  	tester.Start(resume, singa_conf_, &job, &classifiers, num_classifiers_);
+
+	classifiers[0]->setTestImage("input.bin"); // in httprequest post
+	std::thread th0(&Classifier::Run, classifiers[0]);
+	
+	classifiers[1]->setTestImage("input.bin"); // in httprequest post
+	std::thread th1(&Classifier::Run, classifiers[1]);
+	
+	th0.join();
+	th1.join();
+	
+	classifiers[0]->setTestImage("input.bin"); // in httprequest post
+	std::thread th2(&Classifier::Run, classifiers[0]);
+	th2.join();
+        
+	delete classifiers[0];
+        delete classifiers[1];
+	
+  	/*
+	LOG(ERROR) << "clee #classifier after" << classifiers.size();
+	vector<std::thread> threads;
+  	for(auto classifier : classifiers) {
+		classifier->setTestImage("input.bin"); // in httprequest post
+    		threads.push_back(std::thread(&Classifier::Run, classifier));
+        }
+  	for(auto& thread : threads)
+        	thread.join();
+  	for(auto classifier : classifiers)
+    		delete classifier;
+        */
+  }
+  else
+	LOG(ERROR) << " -mode OP requried. OP=1 for train, 2 for test";
+
 }
 
 }  // namespace singa

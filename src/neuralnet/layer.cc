@@ -574,7 +574,7 @@ void RGBImageLayer::ParseRecords(int flag,
     const vector<Record>& records, Blob<float>* blob){
   if ((flag & kForward) == 0)
     return;
-
+  
   const vector<int>& s=blob->shape();
   auto images = Tensor4(&data_);
   const SingleLabelImageRecord& r=records.at(0).image();
@@ -586,6 +586,7 @@ void RGBImageLayer::ParseRecords(int flag,
     //CHECK(std::equal(croped_image.shape(), raw_image.shape());
   int rid=0;
   const float* meandptr=mean_.cpu_data();
+
   for(const Record& record: records){
     auto image=images[rid];
     bool do_crop = cropsize_ > 0 && ((flag & kTrain) == kTrain);
@@ -627,6 +628,7 @@ void RGBImageLayer::ParseRecords(int flag,
   FreeSpace(raw_image);
   if(cropsize_)
     FreeSpace(croped_image);
+  
 }
 void RGBImageLayer::Setup(const LayerProto& proto, int npartitions) {
   ParserLayer::Setup(proto, npartitions);
@@ -848,5 +850,108 @@ void SoftmaxLossLayer::ComputeGradient(int flag) {
   Tensor<cpu, 1> gsrc(gsrcptr, Shape1(gsrcblob->count()));
   gsrc*=scale_/(1.0f*batchsize_);
 }
+
+
+/***************Implementation for InputLayer**************************/
+void InputLayer::ComputeFeature(int flag, Metric* perf){
+   //LOG(ERROR) << "input layer compute";
+  
+   // CLEE 
+   while(true){
+      // testImgPath_ is set by setTestImage(string img) at driver.cc
+      // img should be converted to binary
+      //   at this moment, I put input.bin directly
+      LOG(ERROR) << testImgPath_.c_str();
+      struct stat buffer;   
+      if(stat(testImgPath_.c_str(), &buffer) == 0){ // file exist
+         Record& record = records_.at(0);
+         ReadProtoFromBinaryFile(testImgPath_.c_str(), &record);
+         //remove(inputFilePath_.c_str()); 
+	 break;
+      } 
+      usleep(1000); //sleep for 1 second
+   }
+  /* 
+      struct stat buffer;   
+      if(stat(inputFilePath_.c_str(), &buffer) == 0){ // file exist
+         Record& record = records_.at(0);
+         singa::ReadProtoFromBinaryFile(inputFilePath_.c_str(),&record);
+         //LOG(ERROR) << record.mutable_image()->shape().size();
+         //remove(inputFilePath_.c_str()); 
+      } 
+  */
+}
+
+void InputLayer::Setup(const LayerProto& proto, int npartitions) {
+  //LOG(ERROR) << "input layer setup";
+  Layer::Setup(proto, npartitions);
+  SingleLabelImageRecord *slir = sample_.mutable_image();
+  slir->add_shape(3);
+  slir->add_shape(32);
+  slir->add_shape(32);   
+  inputDirPath_ = proto.input_conf().path();
+  batchsize_ = 1;
+  
+  records_.resize(1); 
+}
+
+/********** * Implementation for OutputLayer*************************/
+ 
+void OutputLayer::Setup(const LayerProto& proto, int npartitions) {
+  //LOG(ERROR) << "output layer setup";
+  
+  LossLayer::Setup(proto, npartitions);
+  CHECK_EQ(srclayers_.size(),1);
+  data_.Reshape(srclayers_[0]->data(this).shape());
+  batchsize_=data_.shape()[0];
+  dim_=data_.count()/batchsize_;
+  topk_=proto.output_conf().topk();
+  scale_=proto.output_conf().scale();
+
+  outputFilePath_ = proto.output_conf().path();
+  
+}
+void OutputLayer::ComputeFeature(int flag, Metric* perf) {
+  //LOG(ERROR) << "output layer compute";
+  
+  Shape<2> s=Shape2(batchsize_, dim_);
+  Tensor<cpu, 2> prob(data_.mutable_cpu_data(), s);
+  Tensor<cpu, 2> src(srclayers_[0]->mutable_data(this)->mutable_cpu_data(), s);
+  Softmax(prob, src); 
+
+  const float* probptr=prob.dptr;
+  std::ofstream write(outputFilePath_);
+     
+  for(int n=0;n<batchsize_;n++){
+    vector<std::pair<float, int> > probvec;
+    for (int j = 0; j < dim_; ++j) {
+      probvec.push_back(std::make_pair(probptr[j], j));
+    }
+    std::partial_sort(
+        probvec.begin(), probvec.begin() + topk_,
+        probvec.end(), std::greater<std::pair<float, int> >());
+    char str_buffer[24] = "-----\n";
+    for (auto it = probvec.begin(); it < probvec.begin() + topk_; it++) {
+      float prob = it->first;
+      int label = it->second;
+      //char str_buffer[24];
+      snprintf(str_buffer, 24, "prob %d:%f\n", label, prob);
+    
+      // write to file
+      write << string(str_buffer);
+      LOG(ERROR) << str_buffer;
+    }    
+    snprintf(str_buffer, 24, "done");
+    write << string(str_buffer);
+    LOG(ERROR) << str_buffer;
+
+    probptr+=dim_;
+  }
+
+  write.close();
+  CHECK_EQ(probptr, prob.dptr+prob.shape.Size());
+
+}
+
 
 }  // namespace singa

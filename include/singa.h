@@ -7,6 +7,7 @@
 #include "proto/job.pb.h"
 #include "proto/singa.pb.h"
 #include "trainer/trainer.h"
+#include "trainer/tester.h"
 #include "utils/common.h"
 #include "utils/param.h"
 #include "utils/singleton.h"

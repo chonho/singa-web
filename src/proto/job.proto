@@ -28,7 +28,7 @@ message JobProto {
   // cluster toplogy conf
   required ClusterProto cluster = 9;
   // total num of steps for training
-  required int32 train_steps = 16;
+  optional int32 train_steps = 16;
   // frequency of displaying training info
   optional int32 disp_freq = 17 [default = 0];
 
@@ -161,7 +161,7 @@ message LayerProto {
   // type of built-in layer
   optional LayerType type = 20 [default = kUserLayer];
   // type of user layer
-  optional string user_type =21;
+  optional string user_type = 21;
 
   // proto for the specific layer
   // configuration for convolution layer
@@ -201,6 +201,9 @@ message LayerProto {
   // configuration for tanh layer
   optional TanhProto tanh_conf = 43;
 
+  optional InputProto input_conf = 70;
+  optional OutputProto output_conf = 71;
+
 
   // overrides the partition dimension for neural net
   optional int32 partition_dim = 60 [default = -1];
@@ -208,6 +211,15 @@ message LayerProto {
   optional int32 partition_id = 90 [default = 0];
 
   extensions 101 to 200;
+}
+
+message InputProto {
+  required string path = 1;
+}
+message OutputProto {
+  required string path = 1;
+  optional int32 topk = 2;
+  optional float scale = 3;
 }
 
 // weight matrix should be defined before bias vector
@@ -264,7 +276,7 @@ message LRGenProto {
 
 message ParamGenProto {
   optional InitMethod type = 1 [default = kUserInit];
-  optional string user_type =2;
+  optional string user_type = 2;
   // constant init
   optional float value = 3 [default = 1];
   // for gaussian sampling
@@ -544,6 +556,9 @@ enum LayerType {
   kBridgeSrc = 15;
   kSlice = 12;
   kSplit = 13;
+
+  kInput = 30;
+  kOutput = 31;
 
   // Indicate the user defined layer. Users should configure user_type
   kUserLayer = 102;

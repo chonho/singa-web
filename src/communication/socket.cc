@@ -36,6 +36,7 @@ bool Poller::Terminated() {
 Dealer::Dealer() : Dealer(-1) {}
 
 Dealer::Dealer(int id) : id_(id) {
+  LOG(ERROR) << "here " << id;
   dealer_ = zsock_new(ZMQ_DEALER);
   CHECK_NOTNULL(dealer_);
 }

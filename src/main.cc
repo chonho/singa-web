@@ -40,4 +40,36 @@ int main(int argc, char **argv) {
   //  submit the job
   driver.Submit(resume, jobConf);
   return 0;
+
+/*
+  struct MHD_Daemon *daemon;
+  static int PORT = 8888;
+  int pid;
+
+  if( (pid = fork()) == 0 )
+  {
+     //system("bin/singa-run.sh -conf foodology/chinesefood/job.conf -mode 2");
+     printf("Child: %d, %d\n", getppid(), getpid());
+  }
+  else {
+
+  daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL,
+                             &answer_to_connection, NULL,
+                             //MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 120,
+                             MHD_OPTION_END);
+
+  if (NULL == daemon) return 1;
+
+  getchar ();
+
+  MHD_stop_daemon (daemon);
+     printf("Parent: %d, %d\n", getppid(), getpid());
+  }
+
+  return 0;
+
+*/
+
+
+
 }
