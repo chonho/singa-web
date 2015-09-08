@@ -19,13 +19,14 @@ class Job(Thread):
       os.mkdir(FOOD_WORKSPACE)
     Thread.__init__(self)
    
-  def init(self, model_zip, num_network):
+  def init(self, model_zip, mode, num_network):
     if self.workspace == '':
       self.workspace = FOOD_WORKSPACE + model_zip.split(".")[0]
       print '--- Create a workspace: {0}'.format(self.workspace)
       self.createWorkspace(model_zip)
     else:
       print '-!- {0} already exsits'.format(self.workspace)
+    self.mode = mode
     self.num_network = num_network
      
   '''
@@ -61,19 +62,23 @@ class Job(Thread):
   start job
     run singa and wait
   '''
-  def run_singa(self, mode):
+  def run_singa(self):
     cmd = os.path.join(SINGA_ROOT, 'bin/singa-foodology.sh') \
 	 + " -conf %s/job.conf" % (self.workspace) \
-	 + " -mode %d" % (mode) \
+	 + " -mode %d" % (self.mode) \
 	 + " -net %d" % (self.num_network)
 
     subprocess.call( cmd.strip().split(" ")  ) 
 
-'''
+  def test_image(self, img):
+    cmd = os.path.join(SINGA_ROOT, 'curl -X POST') \
+	 + " -d \"image=%s\"" % (img) \
+	 + " localhost:8888"
     data = []
     procs = subprocess.Popen(cmd.strip().split(" "), stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
     output = iter(procs.stdout.readline, '')
     print output
+'''
     for line in output:
       if 'job_id' in line:
         jobid = int(line.split('job_id =')[1].split(']')[0])
@@ -95,24 +100,26 @@ class Job(Thread):
   #  self.removeWorkspace() 
 
 '''
-test main
+main
 '''
 #ths = []
 
 job = Job()
-job.init("chinesefood.zip", 3)
-job.run_singa(2)
+job.init("chinesefood.zip", 2, 3)
+job.run_singa()
+#job.test_image("input.bin")
 #ths.append(job)
 #job.delete()
 
 #job1 = Job()
-#job1.createWorkspace("chinesefood1.zip")
-#job1.execute()
+#job1.init("chinesefood.zip", 2, 3)
+#job1.run_singa()
+#job1.test_image("input.bin")
 #ths.append(job1)
+#job1.delete()
 '''
 for i in range(len(ths)):
   ths[i].start()
-
 for i in range(len(ths)):
   ths[i].join()
 '''

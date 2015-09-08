@@ -6,7 +6,8 @@ from collections import OrderedDict
 from threading import Thread
 from flask import Flask, request, make_response, send_from_directory
 
-SINGA_ROOT = '../'
+SINGA_ROOT = ''
+#SINGA_ROOT = '../'
 FOOD_WORKSPACE = SINGA_ROOT + 'foodology/'
 
 class Job(Thread):
@@ -17,7 +18,17 @@ class Job(Thread):
     if not os.path.exists(FOOD_WORKSPACE):
       os.mkdir(FOOD_WORKSPACE)
     Thread.__init__(self)
-    
+   
+  def init(self, model_zip, mode, num_network):
+    if self.workspace == '':
+      self.workspace = FOOD_WORKSPACE + model_zip.split(".")[0]
+      print '--- Create a workspace: {0}'.format(self.workspace)
+      self.createWorkspace(model_zip)
+    else:
+      print '-!- {0} already exsits'.format(self.workspace)
+    self.mode = mode
+    self.num_network = num_network
+     
   '''
   create workspace 
     create workspace for job configuration
@@ -25,25 +36,19 @@ class Job(Thread):
        path_model: path to job configuration (zip) 
   '''
   def createWorkspace(self, model_zip):
-    if self.workspace == '':
-      self.workspace = FOOD_WORKSPACE + model_zip.split(".")[0]
-      print '--- Create a workspace: {0}'.format(self.workspace)
-      if not os.path.isdir(self.workspace):
-        zf = zipfile.ZipFile(model_zip, 'r')
-        for f_org in zf.namelist():
-          f = FOOD_WORKSPACE + f_org 
-          if not os.path.basename(f):
-            os.mkdir(f)
-          else:
-            uzf = file(f, 'wb')
-            uzf.write(zf.read(f_org))
-            uzf.close()
-        zf.close()
-      else:
-        print '-!- {0} exsits'.format(self.workspace)
+    if not os.path.isdir(self.workspace):
+      zf = zipfile.ZipFile(model_zip, 'r')
+      for f_org in zf.namelist():
+        f = FOOD_WORKSPACE + f_org 
+        if not os.path.basename(f):
+          os.mkdir(f)
+        else:
+          uzf = file(f, 'wb')
+          uzf.write(zf.read(f_org))
+          uzf.close()
+      zf.close()
     else:
-      print '-!- {0} exsits'.format(self.workspace)
-
+      print '-!- {0} already exsits'.format(self.workspace)
 
   def removeWorkspace(self):
     if os.path.isdir(self.workspace):
@@ -52,16 +57,28 @@ class Job(Thread):
       print '--- Remove a workspace: {0}'.format(self.workspace)
       self.workspace = ''
 
+
   '''
   start job
     run singa and wait
   '''
-  def execute(self):
-  #def run(self):
-    print self.workspace
+  def run_singa(self):
+    cmd = os.path.join(SINGA_ROOT, 'bin/singa-foodology.sh') \
+	 + " -conf %s/job.conf" % (self.workspace) \
+	 + " -mode %d" % (self.mode) \
+	 + " -net %d" % (self.num_network)
+
+    subprocess.call( cmd.strip().split(" ")  ) 
+
+  def test_image(self, img):
+    cmd = os.path.join(SINGA_ROOT, 'curl -X POST') \
+	 + " -d image=%s" % (img) \
+	 + " localhost:8888"
     data = []
-    procs = subprocess.Popen([os.path.join(SINGA_ROOT, 'bin/singa-run.sh'), '-workspace=%s' % self.workspace], stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
-    output = iter(procs.stdout.readline, '')
+    procs = subprocess.Popen(cmd.strip().split(" "), stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    output = "%s" % (procs.stdout.readlines(), )
+    print output[0]
+'''
     for line in output:
       if 'job_id' in line:
         jobid = int(line.split('job_id =')[1].split(']')[0])
@@ -78,26 +95,31 @@ class Job(Thread):
         self.msg = json.dumps(output,indent=2)
         print self.msg
         data = []
- 
 '''
-test main
-'''
-ths = []
+  #def delete(self):
+  #  self.removeWorkspace() 
 
-#job = Job()
-#job.createWorkspace("chinesefood.zip")
-#job.execute()
+'''
+main
+'''
+#ths = []
+
+job = Job()
+#job.init("chinesefood.zip", 2, 3)
+#job.run_singa()
+job.test_image("input.bin")
 #ths.append(job)
-#job.removeWorkspace()
+#job.delete()
 
-job1 = Job()
-job1.createWorkspace("chinesefood1.zip")
-job1.execute()
+#job1 = Job()
+#job1.init("chinesefood.zip", 2, 3)
+#job1.run_singa()
+#job1.test_image("input.bin")
 #ths.append(job1)
+#job1.delete()
 '''
 for i in range(len(ths)):
   ths[i].start()
-
 for i in range(len(ths)):
   ths[i].join()
 '''

@@ -1,13 +1,3 @@
-/*
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <microhttpd.h>
-*/
 #include <httprequesthandler.h>
 
 #include <cblas.h>
@@ -45,7 +35,7 @@ void Driver::Init(int argc, char **argv) {
   arg_pos = ArgPos(argc, argv, "-net");
   num_classifiers_ = atoi(argv[arg_pos+1]);
 
-  LOG(ERROR) << "mode: " << mode_ << ", #net: " << num_classifiers_;
+  LOG(ERROR) << "mode: " << (mode_==1?"train":"test") << ", #net: " << num_classifiers_;
 
   // register layers
   RegisterLayer<BridgeDstLayer, int>(kBridgeDst);
@@ -133,12 +123,9 @@ void Driver::Submit(bool resume, const JobProto& jobConf) {
 	trainer.Start(resume, singa_conf_, &job);
   }
   else if( mode_ == 2 ) { // testing
-
 	Tester tester;
   	HttpRequestHandler rh;
-
 	tester.Start(resume, singa_conf_, &job, rh.ptr_classifiers(), num_classifiers_); 
-  	
 	rh.Start();
 	//tester.Start(resume, singa_conf_, &job, &classifiers_, num_classifiers_); 
   }

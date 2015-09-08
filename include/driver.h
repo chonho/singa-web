@@ -97,10 +97,10 @@ class Driver {
 
  private:
   int job_id_;
-  int mode_; // CLEE
-  int num_classifiers_; // CLEE
   JobProto job_conf_;
   SingaProto singa_conf_;
+  int mode_; // CLEE
+  int num_classifiers_; // CLEE
 };
 
 template<typename Subclass, typename Type>

@@ -47,7 +47,6 @@ static int HttpRequestHandler::send_page (struct MHD_Connection *connection, con
 
   ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
   MHD_destroy_response (response);
-
   return ret;
 }
 
@@ -158,11 +157,16 @@ static int HttpRequestHandler::answer_to_connection (void *cls,
           handler->is_available_[idx] = false;
 	  std::future<string> fut = std::async( std::launch::async, &Classifier::Run, classifier );
   	  output = fut.get();
-          printf("%s\n", output.c_str());
+          //printf("%s\n", output.c_str()); // http response
           handler->is_available_[idx] = true;
 
           *upload_data_size = 0;
-
+	  
+	
+          char *temp;
+          temp = (char*) malloc(MAXANSWERSIZE);
+          snprintf (temp, MAXANSWERSIZE, "%s\n", output.c_str());
+          con_info->answerstring = temp;
 
           //return send_page (connection, output.c_str());
           return MHD_YES;
