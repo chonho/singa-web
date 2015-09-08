@@ -217,6 +217,8 @@ class Layer {
     return false;
   }
 
+  virtual string getOutputMessage() { return ""; }
+
  protected:
   LayerProto layer_proto_;
   Blob<float> data_, grad_;

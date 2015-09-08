@@ -380,12 +380,15 @@ class OutputLayer: public LossLayer {
     return kOneToAll;
   }
 
+  string getOutputMessage() { return outputMessage_; }
+
  private:
   int batchsize_;
   int dim_;
   float scale_;
   int topk_;
   string outputFilePath_;
+  string outputMessage_;
 };
 
 

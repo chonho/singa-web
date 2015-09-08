@@ -1,3 +1,14 @@
+/*
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <microhttpd.h>
+*/
+#include <httprequesthandler.h>
 
 #include <cblas.h>
 #include <glog/logging.h>
@@ -101,8 +112,6 @@ void Driver::Init(int argc, char **argv) {
   RegisterParamGenerator<UniformSqrtFanInOutGen>(kUniformSqrtFanInOut);
 }
 
-
-
 void Driver::Submit(bool resume, const JobProto& jobConf) {
   if (singa_conf_.has_log_dir())
     SetupLog(singa_conf_.log_dir(), std::to_string(job_id_)
@@ -120,46 +129,19 @@ void Driver::Submit(bool resume, const JobProto& jobConf) {
   job.set_id(job_id_);
 
   if( mode_ == 1 ) {
-  	Trainer trainer;
-  	trainer.Start(resume, singa_conf_, &job);
+	Trainer trainer;
+	trainer.Start(resume, singa_conf_, &job);
   }
-  else if( mode_ == 2 ) { // CLEE add tester and classifier
-        
-  	Tester tester;
-        vector<Classifier*> classifiers;
-  	tester.Start(resume, singa_conf_, &job, &classifiers, num_classifiers_);
+  else if( mode_ == 2 ) { // testing
 
-	classifiers[0]->setTestImage("input.bin"); // in httprequest post
-	std::thread th0(&Classifier::Run, classifiers[0]);
-	
-	classifiers[1]->setTestImage("input.bin"); // in httprequest post
-	std::thread th1(&Classifier::Run, classifiers[1]);
-	
-	th0.join();
-	th1.join();
-	
-	classifiers[0]->setTestImage("input.bin"); // in httprequest post
-	std::thread th2(&Classifier::Run, classifiers[0]);
-	th2.join();
-        
-	delete classifiers[0];
-        delete classifiers[1];
-	
-  	/*
-	LOG(ERROR) << "clee #classifier after" << classifiers.size();
-	vector<std::thread> threads;
-  	for(auto classifier : classifiers) {
-		classifier->setTestImage("input.bin"); // in httprequest post
-    		threads.push_back(std::thread(&Classifier::Run, classifier));
-        }
-  	for(auto& thread : threads)
-        	thread.join();
-  	for(auto classifier : classifiers)
-    		delete classifier;
-        */
+	Tester tester;
+  	HttpRequestHandler rh;
+
+	tester.Start(resume, singa_conf_, &job, rh.ptr_classifiers(), num_classifiers_); 
+  	
+	rh.Start();
+	//tester.Start(resume, singa_conf_, &job, &classifiers_, num_classifiers_); 
   }
-  else
-	LOG(ERROR) << " -mode OP requried. OP=1 for train, 2 for test";
 
 }
 

@@ -23,7 +23,8 @@
 # run a singa job
 #
 
-usage="Usage: singa-run.sh -conf <job config file> [ other arguments ]\n
+usage="Usage: singa-foodology.sh \n
+	-conf <job config file> [ other arguments ]\n
         -resume                 : if want to recover a job\n
         -exec <path to mysinga> : if want to use own singa driver\n
        ### NOTICE ###\n
@@ -41,6 +42,12 @@ while [ $# != 0 ]; do
   elif [ $1 == "-conf" ]; then
     shift
     conf=$1
+  elif [ $1 == "-mode" ]; then
+    shift
+    mode=$1
+  elif [ $1 == "-net" ]; then
+    shift
+    net=$1
   else
     args="$args $1"
   fi
@@ -80,28 +87,5 @@ echo Record job information to $log_dir
 host_file=$log_dir/job.hosts
 ./singatool genhost $job_conf 1>$host_file || exit 1
 
-# set command to run singa
-singa_run="$exe $args -conf $job_conf \
-            -singa_conf $SINGA_HOME/conf/singa.conf \
-            -singa_job $job_id" 
-singa_sshrun="cd $SINGA_HOME; $singa_run"
+./singa -conf $conf -mode $mode -net $net
 
-# ssh and start singa processes
-ssh_options="-oStrictHostKeyChecking=no \
--oUserKnownHostsFile=/dev/null \
--oLogLevel=quiet"
-hosts=`cat $host_file | cut -d ' ' -f 1`
-for i in ${hosts[@]} ; do
-  if [ $i = localhost ] ; then
-    echo Executing : $singa_run
-    $singa_run &
-  else
-    echo Executing @ $i : $singa_sshrun
-    ssh $ssh_options $i $singa_sshrun &
-  fi
-done
-
-# generate pid list for this job
-#sleep 2
-#./singatool view $job_id 1>$log_dir/job.pids || exit 1
-#wait

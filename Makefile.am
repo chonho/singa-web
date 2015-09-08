@@ -25,6 +25,7 @@ PROTO_PYS := tool/pb2/singa_pb2.py \
              tool/pb2/common_pb2.py
 
 SINGA_SRCS := src/driver.cc \
+              src/httprequesthandler.cc \
               src/utils/cluster.cc \
               src/utils/cluster_rt.cc \
               src/utils/graph.cc \
@@ -46,6 +47,7 @@ SINGA_SRCS := src/driver.cc \
               src/communication/msg.cc
 
 SINGA_HDRS := include/singa.h \
+              include/httprequesthandler.h \
               include/utils/cluster.h \
               include/utils/cluster_rt.h \
               include/utils/param.h \

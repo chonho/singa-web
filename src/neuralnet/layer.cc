@@ -866,6 +866,7 @@ void InputLayer::ComputeFeature(int flag, Metric* perf){
       if(stat(testImgPath_.c_str(), &buffer) == 0){ // file exist
          Record& record = records_.at(0);
          ReadProtoFromBinaryFile(testImgPath_.c_str(), &record);
+         //sleep(5); // testing purpose
          //remove(inputFilePath_.c_str()); 
 	 break;
       } 
@@ -909,6 +910,7 @@ void OutputLayer::Setup(const LayerProto& proto, int npartitions) {
   scale_=proto.output_conf().scale();
 
   outputFilePath_ = proto.output_conf().path();
+  outputMessage_ = "";
   
 }
 void OutputLayer::ComputeFeature(int flag, Metric* perf) {
@@ -921,6 +923,7 @@ void OutputLayer::ComputeFeature(int flag, Metric* perf) {
 
   const float* probptr=prob.dptr;
   std::ofstream write(outputFilePath_);
+  outputMessage_ = "";
      
   for(int n=0;n<batchsize_;n++){
     vector<std::pair<float, int> > probvec;
@@ -939,18 +942,19 @@ void OutputLayer::ComputeFeature(int flag, Metric* perf) {
     
       // write to file
       write << string(str_buffer);
-      LOG(ERROR) << str_buffer;
+      outputMessage_ += string(str_buffer);
+      //LOG(ERROR) << str_buffer;
     }    
     snprintf(str_buffer, 24, "done");
     write << string(str_buffer);
-    LOG(ERROR) << str_buffer;
+    outputMessage_ += string(str_buffer);
+    //LOG(ERROR) << str_buffer;
 
     probptr+=dim_;
   }
 
   write.close();
   CHECK_EQ(probptr, prob.dptr+prob.shape.Size());
-
 }
 
 
