@@ -77,7 +77,7 @@ class Job(Thread):
     data = []
     procs = subprocess.Popen(cmd.strip().split(" "), stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     output = "%s" % (procs.stdout.readlines(), )
-    print output[0]
+    print output
 '''
     for line in output:
       if 'job_id' in line:
