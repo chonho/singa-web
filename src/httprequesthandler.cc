@@ -1,9 +1,10 @@
 #include <httprequesthandler.h>
-#include <future>
+#include <signal.h>
 
 namespace singa {
 
 #define PORT		8888
+
 #define POSTBUFFERSIZE  512
 #define MAXNAMESIZE     20
 #define MAXANSWERSIZE   512
@@ -12,12 +13,14 @@ namespace singa {
 #define POST 1
 
 #define KEY_IMAGE "image"
+#define KEY_TESTID "testid"
 
 struct connection_info_struct
 {
   int connectiontype;
   char *answerstring;
-  char *value;
+  char *imagepath;
+  int testid;
   struct MHD_PostProcessor *postprocessor;
 };
 
@@ -66,7 +69,7 @@ static int HttpRequestHandler::iterate_post (void *coninfo_cls,
           value = (char*) malloc(MAXANSWERSIZE);
           if (!value) return MHD_NO;
           snprintf (value, MAXANSWERSIZE, "%s", data);
-	  con_info->value = value;
+	  con_info->imagepath = value;
 
           char *answerstring;
           answerstring = (char*) malloc(MAXANSWERSIZE);
@@ -77,7 +80,15 @@ static int HttpRequestHandler::iterate_post (void *coninfo_cls,
       else
         con_info->answerstring = NULL;
 
-      return MHD_NO;
+      return MHD_YES;
+  }
+
+
+  if (0 == strcmp (key, KEY_TESTID)) {
+     
+     con_info->testid = atoi(data); 
+     return MHD_YES;
+
   }
 
   return MHD_YES;
@@ -104,7 +115,7 @@ static int HttpRequestHandler::answer_to_connection (void *cls,
         return MHD_NO;
       con_info->answerstring = NULL;
 
-      if (0 == strcmp (method, "POST"))
+      if (0 == strcmp (method, "POST")) 
       {
           con_info->postprocessor =
             MHD_create_post_processor (connection, POSTBUFFERSIZE,
@@ -126,13 +137,11 @@ static int HttpRequestHandler::answer_to_connection (void *cls,
       return MHD_YES;
     }
 
-      //printf("%s, %s, %s, %s\n", url, method, version, upload_data);
+    //printf("%s, %s, %s, %s\n", url, method, version, upload_data);
 
     if (0 == strcmp (method, "GET")) {
 
 	return send_page( connection, page_get );
-	//return send_page( connection, askpage );
-  
     }
 
     string output="";
@@ -150,25 +159,21 @@ static int HttpRequestHandler::answer_to_connection (void *cls,
     	  HttpRequestHandler* handler = (HttpRequestHandler*) cls;
           int idx = 0;
 	  while((idx = handler->getIndex())==-1);
-	  printf("---available classifier[%d]\n",idx);
+	  //printf("---available classifier[%d]\n",idx);
 	  Classifier* classifier = handler->classifiers_[idx];
-	  classifier->setTestImage( con_info->value );
+	  classifier->setTestImage( con_info->imagepath, con_info->testid );
 	  classifier->Load();
           handler->is_available_[idx] = false;
-	  std::future<string> fut = std::async( std::launch::async, &Classifier::Run, classifier );
-  	  output = fut.get();
-          //printf("%s\n", output.c_str()); // http response
+	  classifier->Run( &output );
           handler->is_available_[idx] = true;
 
           *upload_data_size = 0;
-	  
 	
           char *temp;
           temp = (char*) malloc(MAXANSWERSIZE);
-          snprintf (temp, MAXANSWERSIZE, "%s\n", output.c_str());
+          snprintf (temp, MAXANSWERSIZE, "%s", output.c_str());
           con_info->answerstring = temp;
 
-          //return send_page (connection, output.c_str());
           return MHD_YES;
         }
         else if (NULL != con_info->answerstring)
@@ -176,27 +181,79 @@ static int HttpRequestHandler::answer_to_connection (void *cls,
           return send_page (connection, con_info->answerstring);
         }
     }
-    
-    return send_page (connection, errorpage);
 
+    return send_page (connection, errorpage);
+}
+
+static void HttpRequestHandler::request_completed (void *cls,
+			    struct MHD_Connection *connection,
+			    void **con_cls,
+			    enum MHD_RequestTerminationCode toe)
+{
+  struct connection_info_struct *con_info = *con_cls;
+
+  if (NULL == con_info) return;
+  if (con_info->connectiontype == POST)
+    {
+      MHD_destroy_post_processor (con_info->postprocessor);        
+      if (con_info->answerstring) free (con_info->answerstring);
+    }
+  
+  free (con_info);
+  *con_cls = NULL;   
+}
+
+static int controlid = 0;
+void sigcatch(int sig) {
+    printf("---signal %d: ", sig);
+    if(sig == SIGUSR1) controlid = (controlid==1 ? 2 : 1); 
+    if(sig == SIGUSR2) controlid = 3; 
+    usleep(1000);
 }
 
 int HttpRequestHandler::Start() {
 
-  this->Setup();
+
+  if (SIG_ERR == signal(SIGUSR1, sigcatch)) {
+        printf("failed to set signal handler.n");
+        exit(1);
+  }
+  if (SIG_ERR == signal(SIGUSR2, sigcatch)) {
+        printf("failed to set signal handler.n");
+        exit(1);
+  }
 
   struct MHD_Daemon *daemon;
+    
+  do {
+      // 1: start
+      while( controlid != 1 && controlid !=3 ) usleep(1000);
+      printf(""); // TODO if remove, it does not work...
 
-  daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL,
+      if(controlid == 3) {
+         // 3: terminated 
+         printf("Server Terminated");
+	 break;
+      }
+
+      this->Setup();
+
+      daemon = MHD_start_daemon (MHD_USE_THREAD_PER_CONNECTION, PORT, NULL, NULL,
                              &answer_to_connection, this,
                              //MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 120,
+			     MHD_OPTION_NOTIFY_COMPLETED, &request_completed,
                              MHD_OPTION_END);
 
-  if (NULL == daemon) return 1;
+      if (NULL == daemon) return 1;
+      printf("Server Starts\n");
 
-  getchar ();
+      // 2: pause 
+      while( controlid != 2) usleep(1000);
 
-  MHD_stop_daemon (daemon);
+      MHD_stop_daemon (daemon);
+      printf("Server Stops (pause) \n");
+  
+  } while( controlid < 3);    
 
   return 0;
 

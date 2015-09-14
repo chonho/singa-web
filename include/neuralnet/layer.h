@@ -380,7 +380,9 @@ class OutputLayer: public LossLayer {
     return kOneToAll;
   }
 
-  string getOutputMessage() { return outputMessage_; }
+  //string getOutputMessage() { return outputMessage_; }
+  void getOutputMessage(string& out) { out = outputMessage_; }
+  void setTestImageID(int id) { testid_ = id; }
 
  private:
   int batchsize_;
@@ -389,6 +391,8 @@ class OutputLayer: public LossLayer {
   int topk_;
   string outputFilePath_;
   string outputMessage_;
+  int testid_;
+  
 };
 
 

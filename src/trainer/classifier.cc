@@ -142,7 +142,8 @@ void Classifier::ConnectStub(int grp, int id, Dealer* dealer, EntityType entity)
 }
 
 void Classifier::Load() {
-  LOG(ERROR) << "Classifier (group = " << grp_id_ <<", id = " << id_ << ") start";
+  //LOG(ERROR) << "Classifier (group = " << grp_id_ <<", id = " << id_ << ") start";
+  LOG(ERROR) << "Classifier " << id_ << " starts";
 
   /* CLEE
   auto cluster = Cluster::Get();
@@ -168,55 +169,24 @@ void Classifier::Load() {
   InitLocalParams();
 }
 
-string Classifier::Run() {
+void Classifier::Run(string* output) {
   Metric perf;
 
   TestOneBatch(step_, &perf);
 
-  string output;
   for (auto& layer : train_net_->layers()) {
     if (layer->type() == 31) // CLEE OutputLayer
-	output = layer->getOutputMessage();
+	layer->getOutputMessage( *output );
   }
-  
-  /* CLEE
-  while (!StopNow(step_)) {
-    if (ValidateNow(step_)) {
-      //LOG(ERROR)<<"Validation at step "<<step;
-      CollectAll(validation_net_, step_);
-      Test(job_conf_.valid_steps(), kValidation, validation_net_);
-    }
-    if (TestNow(step_)) {
-      CollectAll(test_net_, step_);
-      Test(job_conf_.test_steps(), kTest, test_net_);
-    }
-
-    if (CheckpointNow(step_)) {
-      CollectAll(train_net_, step_);
-      Checkpoint(step_, train_net_);
-      job_conf_.set_step(step_);
-    }
-    
-    TrainOneBatch(step_, &perf);
-
-    step_++;
-  }
-  */
-
-  // save the model
-  //Checkpoint(step_, train_net_);
-
-  // clean up
-  //cluster->runtime()->LeaveSGroup(grp_id_, id_, svr_grp);
   
   // notify the stub on worker stop
   Msg* msg=new Msg(Addr(grp_id_, id_, kClassifierParam), Addr(-1,-1, kStub));
   msg->set_type(kStop);
   dealer_->Send(&msg);  // use param dealer to send the stop msg
 
-  LOG(ERROR) << "Classifier (group = " <<grp_id_ << ", id = " << id_ << ") stops";
+  //LOG(ERROR) << "Classifier (group = " <<grp_id_ << ", id = " << id_ << ") stops";
+  LOG(ERROR) << "Classifier " << id_ << " stops";
 
-  return output;
 }
 
 
@@ -362,6 +332,8 @@ void BPClassifier::Forward(
   for (auto& layer : net->layers()) {
     if (layer->type() == 30) // CLEE InputLayer
       layer->setTestImage( testImgPath_ );
+    if (layer->type() == 31) // CLEE OutputLayer
+      layer->setTestImageID( testid_ );
     /* CLEE
     if (layer->partition_id() == id_) {
       if (layer->is_bridgedstlayer())  // recv data from other workers

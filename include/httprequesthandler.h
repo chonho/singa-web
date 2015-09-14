@@ -23,15 +23,19 @@ public:
   int Start();
 
   int getIndex() {
-	    for(int i=0; i<(signed int)classifiers_.size(); i++) {
-		if (is_available_[i] == true) return i;
-		else return -1;
-	    }
+	    for(int i=0; i<(signed int)classifiers_.size(); i++)
+		if (is_available_[i]) return i;
+ 	    return -1;
   	}
 
   vector<Classifier*>* ptr_classifiers() { return &classifiers_; }
 
+  void set_controlID( int id ) { controlID_ = id; }
+  int get_controlID() { return controlID_; }
+
 private:
+
+  static void json_format( string*, string* );
 
   static int send_page (struct MHD_Connection *connection, const char *page);
 
@@ -48,11 +52,18 @@ private:
               const char *version,
               const char *upload_data,
               size_t *upload_data_size, void **con_cls);
- 
+  
+  static void request_completed (void *cls,
+              struct MHD_Connection *connection,
+              void **con_cls,
+              enum MHD_RequestTerminationCode toe);
+
+
   vector<Classifier*> classifiers_;
 
   vector<bool> is_available_;
 
+  int controlID_;
 };
 
 } // singa

@@ -41,7 +41,7 @@ class Classifier {
     * Train the neuralnet step by step, test/validation is done periodically.
     */
   void Load();
-  string Run();
+  void Run(string*);
   /**
    * Init all local params (i.e., params from layers resident in this worker).
    *
@@ -173,7 +173,7 @@ class Classifier {
    */
   int id() const { return id_;}
 
-  void setTestImage(string testImgPath) { testImgPath_ = testImgPath; } 
+  void setTestImage(string testImgPath, int testid) { testImgPath_ = testImgPath; testid_ = testid; } 
 
  protected:
   int thread_id_, grp_id_, id_;
@@ -183,6 +183,7 @@ class Classifier {
   Dealer* layer_dealer_, *dealer_;
   //CLEE
   string testImgPath_;
+  int testid_;
 };
 
 class BPClassifier: public Classifier{

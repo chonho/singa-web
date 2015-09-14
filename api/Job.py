@@ -6,22 +6,25 @@ from collections import OrderedDict
 from threading import Thread
 from flask import Flask, request, make_response, send_from_directory
 
-SINGA_ROOT = ''
+SINGA_ROOT = '/home/chonho/singa-web/incubator-singa/'
+#SINGA_ROOT = ''
 #SINGA_ROOT = '../'
 FOOD_WORKSPACE = SINGA_ROOT + 'foodology/'
 
-class Job(Thread):
+class Job:
 
   workspace = ''
   
+  '''
   def __init__(self):
-    # ssh connection
-    #
     if not os.path.exists(FOOD_WORKSPACE):
       os.mkdir(FOOD_WORKSPACE)
     Thread.__init__(self)
+  '''
    
   def init(self, model_zip, mode, num_network):
+    if not os.path.exists(FOOD_WORKSPACE):
+      os.mkdir(FOOD_WORKSPACE)
     if self.workspace == '':
       self.workspace = FOOD_WORKSPACE + model_zip.split(".")[0]
       print '--- Create a workspace: {0}'.format(self.workspace)
@@ -82,14 +85,14 @@ class Job(Thread):
 
   def test_image(self, img, tid):
     cmd = os.path.join(SINGA_ROOT, 'curl -X POST') \
-	 + " -d \"image=%s\"" % (img) \
-	 + " -d \"testid=%d\"" % (tid) \
-	 + " localhost:8888"
-    print cmd
+         + " -d \"image=%s\"" % (img) \
+         + " -d \"testid=%d\"" % (tid) \
+         + " localhost:8888"
     procs = subprocess.Popen(cmd.strip().split(" "), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     for line in iter(procs.stdout.readline, ''):
         print line
         #print json.dumps(line.replace("\"","\'"), indent=4)
+
 '''
     for line in output:
       if 'job_id' in line:
@@ -116,11 +119,11 @@ main
 '''
 #ths = []
 
-job = Job()
+#job = Job()
 #job.init("chinesefood.zip", 2, 3)
 #job.run_singa()
-job.start_server()
-job.test_image("input.bin", 1)
+#job.start_server()
+#job.test_image("input.bin")
 #ths.append(job)
 #job.delete()
 

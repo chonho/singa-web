@@ -5,6 +5,12 @@
 #include "mshadow/cxxnet_op.h"
 #include "neuralnet/layer.h"
 #include "utils/singleton.h"
+#include "picojson.h"
+#include <map>
+#include <vector>
+
+using std::map;
+using namespace picojson;
 
 using namespace mshadow;
 using namespace mshadow::expr;
@@ -923,7 +929,8 @@ void OutputLayer::ComputeFeature(int flag, Metric* perf) {
 
   const float* probptr=prob.dptr;
   std::ofstream write(outputFilePath_);
-  outputMessage_ = "";
+
+  array adata; // for data value in json format
      
   for(int n=0;n<batchsize_;n++){
     vector<std::pair<float, int> > probvec;
@@ -934,20 +941,26 @@ void OutputLayer::ComputeFeature(int flag, Metric* perf) {
         probvec.begin(), probvec.begin() + topk_,
         probvec.end(), std::greater<std::pair<float, int> >());
     char str_buffer[24] = "-----\n";
+    object o_data;
     for (auto it = probvec.begin(); it < probvec.begin() + topk_; it++) {
       float prob = it->first;
       int label = it->second;
       //char str_buffer[24];
       snprintf(str_buffer, 24, "prob %d:%f\n", label, prob);
+
+      value lval(std::to_string(label));
+      value pval((double)prob);
+      object odata;
+      odata.insert(map<string,value>::value_type("Label", lval));
+      odata.insert(map<string,value>::value_type("Prob", pval));
+      value oval(odata);
+      adata.push_back(oval); 
     
       // write to file
       write << string(str_buffer);
-      outputMessage_ += string(str_buffer);
       //LOG(ERROR) << str_buffer;
     }    
-    snprintf(str_buffer, 24, "done");
     write << string(str_buffer);
-    outputMessage_ += string(str_buffer);
     //LOG(ERROR) << str_buffer;
 
     probptr+=dim_;
@@ -955,6 +968,16 @@ void OutputLayer::ComputeFeature(int flag, Metric* perf) {
 
   write.close();
   CHECK_EQ(probptr, prob.dptr+prob.shape.Size());
+  
+  object obj;
+  value tval(std::to_string(testid_));
+  obj.insert(map<string,value>::value_type("TestID", tval));
+  value aval(adata);
+  obj.insert(map<string,value>::value_type("Data", aval));
+  value json(obj);
+  outputMessage_ = json.serialize().c_str();
+  
+
 }
 
 

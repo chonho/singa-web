@@ -35,7 +35,8 @@ class Layer {
   Layer() { }
   virtual ~Layer() {}
 
-  virtual void setTestImage(string testImgPath) {}
+  virtual void setTestImage(string) {}
+  virtual void setTestImageID(int) {}
   /**
    * Setup layer properties.
    *
@@ -217,7 +218,8 @@ class Layer {
     return false;
   }
 
-  virtual string getOutputMessage() { return ""; }
+  //virtual string getOutputMessage() { return ""; } 
+  virtual void getOutputMessage(string&){} 
 
  protected:
   LayerProto layer_proto_;

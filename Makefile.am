@@ -47,6 +47,7 @@ SINGA_SRCS := src/driver.cc \
               src/communication/msg.cc
 
 SINGA_HDRS := include/singa.h \
+              include/picojson.h \
               include/httprequesthandler.h \
               include/utils/cluster.h \
               include/utils/cluster_rt.h \

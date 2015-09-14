@@ -77,8 +77,8 @@ void Tester::SetupWorkerServer(
     const JobProto& job_conf,
     const vector<Classifier*>& classifiers,
     const vector<Server*>& servers) {
-  auto cluster = Cluster::Get();
-  int grp_size = cluster->nworkers_per_group();
+  //auto cluster = Cluster::Get();
+  //int grp_size = cluster->nworkers_per_group();
   const auto& net_conf = job_conf.neuralnet();
   //CLEE
   //auto net = NeuralNet::Create(net_conf, kTrain, grp_size);
@@ -128,8 +128,9 @@ void Tester::SetupWorkerServer(
     }
     */
     grp_net[grp_id] = net;
-    LOG(ERROR) << "grp " << worker->grp_id() << ", worker " << worker->id()
-	       << " net " << grp_net[grp_id].get();
+
+    //LOG(ERROR) << "Classifier " << worker->id() << " network " << grp_net[grp_id].get();
+    LOG(ERROR) << "Classifier " << worker->id() << " is ready";
 
     worker->Setup(job_conf, grp_net[grp_id], valid_net, test_net);
   }
@@ -167,7 +168,7 @@ vector<Server*> Tester::CreateServers(int nthreads, const JobProto& job) {
 
 //CLEEvector<Classifier*> Tester::CreateWorkers(int nthreads, const JobProto& job) {
 void Tester::CreateWorkers(int numClassifiers, const JobProto& job, vector<Classifier*>& classifiers) {
-  auto cluster=Cluster::Get();
+  //auto cluster=Cluster::Get();
   /*CLEE
   vector<Classifier*> classifiers;
   if(!cluster->has_worker())
