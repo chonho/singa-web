@@ -33,8 +33,8 @@ void Classifier::Setup(
     shared_ptr<NeuralNet> valid_net, shared_ptr<NeuralNet> test_net) {
   job_conf_.CopyFrom(job);
   train_net_ = train_net;
-  validation_net_ = valid_net;
-  test_net_ = test_net;
+  //validation_net_ = valid_net;
+  //test_net_ = test_net;
 }
 
 Classifier::~Classifier() {
@@ -142,26 +142,17 @@ void Classifier::ConnectStub(int grp, int id, Dealer* dealer, EntityType entity)
 }
 
 void Classifier::Load() {
-  //LOG(ERROR) << "Classifier (group = " << grp_id_ <<", id = " << id_ << ") start";
   LOG(ERROR) << "Classifier " << id_ << " starts";
-
-  /* CLEE
-  auto cluster = Cluster::Get();
-  int svr_grp = grp_id_ / cluster->nworker_groups_per_server_group();
-  CHECK(cluster->runtime()->JoinSGroup(grp_id_, id_, svr_grp));
-  */
 
   if(dealer_ == nullptr) {
   dealer_ = new Dealer(2*thread_id_);
   ConnectStub(grp_id_, id_, dealer_, kClassifierParam);
   for (auto layer : train_net_->layers()) {
-    //if (layer->partition_id() == id_) {
-      if (layer->is_bridgelayer()) {
+     if (layer->is_bridgelayer()) {
         layer_dealer_ = new Dealer(2*thread_id_+1);
         ConnectStub(grp_id_, id_, layer_dealer_, kClassifierLayer);
         break;
-      }
-    //}
+     }
   }
   }
 
@@ -175,7 +166,7 @@ void Classifier::Run(string* output) {
   TestOneBatch(step_, &perf);
 
   for (auto& layer : train_net_->layers()) {
-    if (layer->type() == 31) // CLEE OutputLayer
+    if (layer->user_type() == "kOutput") // CLEE OutputLayer
 	layer->getOutputMessage( *output );
   }
   
@@ -228,12 +219,14 @@ int Classifier::CollectAll(shared_ptr<NeuralNet> net, int step) {
   }
   return 1;
 }
+
 int Classifier::Collect(Param* param, int step) {
   while (param->version() <= param->local_version())
     //CLEEstd::this_thread::sleep_for(std::chrono::milliseconds(kCollectSleepTime));
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   return 1;
 }
+
 void Classifier::Report(const string& prefix, const Metric & perf) {
   Msg* msg = new Msg(Addr(grp_id_, id_, kClassifierParam), Addr(-1, -1, kStub));
   msg->set_trgt(0, step_);
@@ -272,28 +265,6 @@ void Classifier::SendBlobs(
   layer_dealer_->Send(&msg);
 }
 
-/*CLEE
-void Classifier::Test(int nsteps, Phase phase, shared_ptr<NeuralNet> net) {
-  Metric perf;
-  for (int step = 0; step < nsteps; step++)
-    TestOneBatch(step, phase, net, &perf);
-  if (phase == kValidation)
-    Report("Validation", perf);
-  else if (phase == kTest)
-    Report("Test", perf);
-}
-*/
-
-bool Classifier::DisplayNow(int step) const {
-  return (job_conf_.disp_freq() > 0
-      && step >= job_conf_.disp_after()
-      && ((step - job_conf_.disp_after())
-        % job_conf_.disp_freq() == 0));
-}
-
-bool Classifier::DisplayDebugInfo(int step) const {
-  return DisplayNow(step) && job_conf_.debug() && grp_id_ == 0;
-}
 bool Classifier::StopNow(int step) const {
   return step >= job_conf_.train_steps();
 }
@@ -323,65 +294,17 @@ bool Classifier::ValidateNow(const int step) const {
 
 
 /****************************BPClassifier**********************************/
-void BPClassifier::Init(int thread_id, int group_id, int worker_id) {
-  Classifier::Init(thread_id, group_id, worker_id);
+void BPClassifier::Init(int thread_id, int group_id, int classifier_id) {
+  Classifier::Init(thread_id, group_id, classifier_id);
 }
 
 void BPClassifier::Forward(
     int step, Phase phase, shared_ptr<NeuralNet> net, Metric* perf) {
   for (auto& layer : net->layers()) {
-    if (layer->type() == 30) // CLEE InputLayer
-      layer->setTestImage( testImgPath_ );
-    if (layer->type() == 31) // CLEE OutputLayer
-      layer->setTestImageID( testid_ );
-    /* CLEE
-    if (layer->partition_id() == id_) {
-      if (layer->is_bridgedstlayer())  // recv data from other workers
-        ReceiveBlobs(true, false, static_cast<BridgeLayer*>(layer), net);
-      if (phase == kTrain) {
-        for (Param* p : layer->GetParams()) {  // wait until param is updated
-          Collect(p, step);
-        }
-      }
-      layer->ComputeFeature(phase | kForward, perf);
-      if (layer->is_bridgesrclayer())  // send data to other workers
-        SendBlobs(true, false, static_cast<BridgeLayer*>(layer), net);
-      if (DisplayDebugInfo(step))
-        LOG(INFO) << layer->DebugString(step, phase | kForward);
-    }
-    if (phase == kTrain) {
-      for (Param* p : layer->GetParams()) {  // wait until param is updated
-        Collect(p, step);
-      }
-    }
-    */
+    if (layer->user_type() == "kInput")
+       layer->setTestImage( testImgName_ );
     layer->ComputeFeature(phase | kForward, perf);
   }
-}
-
-void BPClassifier::Backward(int step, shared_ptr<NeuralNet> net) {
-  auto& layers=net->layers();
-  for (auto it = layers.rbegin(); it != layers.rend(); it++){
-    Layer* layer = *it;
-    if (layer->partition_id() == id_) {
-      if(layer->is_bridgesrclayer()) {
-        // ReceiveBlobs(false, true, layer, net);
-      }
-      layer->ComputeGradient(kTrain | kBackward);
-      if (DisplayDebugInfo(step))
-        LOG(INFO) << layer->DebugString(step, kTrain | kBackward);
-      for (Param* p : layer->GetParams())
-        Update(p, step);
-      if (layer->is_bridgedstlayer()) {
-        // SendBlobs(false, true, layer);
-      }
-    }
-  }
-}
-
-void BPClassifier::TrainOneBatch(int step, Metric* perf) {
-  Forward(step, kTrain, train_net_, perf);
-  Backward(step, train_net_);
 }
 
 void BPClassifier::TestOneBatch(int step, Metric* perf) {
@@ -395,28 +318,6 @@ void BPClassifier::TestOneBatch(int step, Phase phase,
 */
 
 /****************************CDClassifier**********************************/
-void CDClassifier::TrainOneBatch(int step, Metric* perf) {
-  const auto& layers = train_net_->layers();
-  for (auto* layer : layers) {
-    for (Param* p : layer->GetParams())  // wait until param is updated
-      Collect(p, step);
-    layer->ComputeFeature(kPositive | kForward, perf);
-  }
-  for (auto* layer : layers)
-    layer->ComputeFeature(kNegative | kTest, perf);
-  for (int i = 1; i < job_conf_.train_one_batch().cd_conf().cd_k(); i++) {
-    for (auto* layer : layers) {
-      layer->ComputeFeature(kNegative, perf);
-    }
-  }
-  for (auto* layer : layers) {
-    layer->ComputeGradient(kTrain);
-    for (Param* p : layer->GetParams()) {
-      Update(p, step);
-    }
-  }
-}
-
 void CDClassifier::TestOneBatch(int step, Metric* perf) {
   const auto& layers = train_net_->layers();
   for (auto* layer : layers) {

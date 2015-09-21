@@ -13,15 +13,19 @@ AC_CXXFLAGS = -O3 -Wall -pthread -fPIC -std=c++11 -Wno-unknown-pragmas \
 
 PROTOS := $(top_srcdir)/src/proto/singa.proto \
           $(top_srcdir)/src/proto/job.proto \
+          $(top_srcdir)/src/proto/myproto.proto \
           $(top_srcdir)/src/proto/common.proto
 PROTO_SRCS := src/proto/singa.pb.cc \
               src/proto/job.pb.cc \
+              src/proto/myproto.pb.cc \
               src/proto/common.pb.cc
 PROTO_HDRS := include/proto/singa.pb.h \
               include/proto/job.pb.h \
+              include/proto/myproto.pb.h \
               include/proto/common.pb.h
 PROTO_PYS := tool/pb2/singa_pb2.py \
              tool/pb2/job_pb2.py \
+             tool/pb2/myproto_pb2.py \
              tool/pb2/common_pb2.py
 
 SINGA_SRCS := src/driver.cc \
@@ -38,7 +42,7 @@ SINGA_SRCS := src/driver.cc \
               src/trainer/worker.cc \
               src/trainer/classifier.cc \
               src/trainer/trainer.cc \
-              src/trainer/tester.cc \
+              src/trainer/predictor.cc \
               src/neuralnet/base_layer.cc \
               src/neuralnet/neuralnet.cc \
               src/neuralnet/optional_layer.cc \
@@ -64,7 +68,7 @@ SINGA_HDRS := include/singa.h \
               include/trainer/worker.h \
               include/trainer/classifier.h \
               include/trainer/trainer.h \
-              include/trainer/tester.h \
+              include/trainer/predictor.h \
               include/neuralnet/base_layer.h \
               include/neuralnet/layer.h \
               include/neuralnet/optional_layer.h \

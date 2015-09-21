@@ -201,8 +201,8 @@ message LayerProto {
   // configuration for tanh layer
   optional TanhProto tanh_conf = 43;
 
-  optional InputProto input_conf = 70;
-  optional OutputProto output_conf = 71;
+  //optional InputProto input_conf = 70;
+  //optional OutputProto output_conf = 71;
 
 
   // overrides the partition dimension for neural net
@@ -213,6 +213,7 @@ message LayerProto {
   extensions 101 to 200;
 }
 
+/*******************
 message InputProto {
   required string path = 1;
 }
@@ -221,6 +222,7 @@ message OutputProto {
   optional int32 topk = 2;
   optional float scale = 3;
 }
+********************/
 
 // weight matrix should be defined before bias vector
 // TODO(wangwei): separate conf for diff init method
@@ -557,8 +559,8 @@ enum LayerType {
   kSlice = 12;
   kSplit = 13;
 
-  kInput = 30;
-  kOutput = 31;
+  //kInput = 30;
+  //kOutput = 31;
 
   // Indicate the user defined layer. Users should configure user_type
   kUserLayer = 102;

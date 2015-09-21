@@ -334,7 +334,7 @@ class TanhLayer: public Layer {
   float outer_scale_, inner_scale_;
 };
 
-
+/*****************************************************
 class InputLayer: public DataLayer{
  public:
   using Layer::ComputeFeature;
@@ -352,25 +352,15 @@ class InputLayer: public DataLayer{
   string testImgPath_;
   DataShard* shard_;
 };
-
-/**
- * This is an output Layer to write result to disk
- */
  
 class OutputLayer: public LossLayer {
-  /*
-   * connected from the label layer and the last fc layer
-   */
  public:
   using Layer::ComputeFeature;
 
   void Setup(const LayerProto& proto, int npartitions) override;
   void ComputeFeature(int flag, Metric *perf) override; 
   void ComputeGradient(int flag) override {}
-  /**
-   * softmax is not recommendeded for partition because it requires the whole
-   * src layer for normalization.
-   */
+
   int partition_dim() const override {
     CHECK_LE(layer_proto_.partition_dim(), 1);
     return layer_proto_.partition_dim();
@@ -394,7 +384,7 @@ class OutputLayer: public LossLayer {
   int testid_;
   
 };
-
+****************************************************/
 
 }  // namespace singa
 

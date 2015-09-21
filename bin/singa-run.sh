@@ -102,6 +102,6 @@ for i in ${hosts[@]} ; do
 done
 
 # generate pid list for this job
-#sleep 2
-#./singatool view $job_id 1>$log_dir/job.pids || exit 1
-#wait
+sleep 2
+./singatool view $job_id 1>$log_dir/job.pids || exit 1
+wait

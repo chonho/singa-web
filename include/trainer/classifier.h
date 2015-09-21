@@ -80,7 +80,7 @@ class Classifier {
     * Train one mini-batch.
     * Test/Validation is done before training.
     */
-  virtual void TrainOneBatch(int step, Metric* perf)=0;
+  //virtual void TrainOneBatch(int step, Metric* perf)=0;
   /**
    * Test/validate one mini-batch.
    */
@@ -139,11 +139,11 @@ class Classifier {
   /**
    * Check is it time to display training info, e.g., loss and precison.
    */
-  inline bool DisplayNow(int step) const;
+  //inline bool DisplayNow(int step) const;
   /**
    * Check is it time to display training info, e.g., loss and precison.
    */
-  inline bool DisplayDebugInfo(int step) const;
+  //inline bool DisplayDebugInfo(int step) const;
   /**
    * Check is it time to stop
    */
@@ -173,7 +173,7 @@ class Classifier {
    */
   int id() const { return id_;}
 
-  void setTestImage(string testImgPath, int testid) { testImgPath_ = testImgPath; testid_ = testid; } 
+  void setTestImage(string testImgName, int testid) { testImgName_ = testImgName; testid_ = testid; } 
 
  protected:
   int thread_id_, grp_id_, id_;
@@ -182,7 +182,7 @@ class Classifier {
   shared_ptr<NeuralNet> train_net_, test_net_, validation_net_;
   Dealer* layer_dealer_, *dealer_;
   //CLEE
-  string testImgPath_;
+  string testImgName_;
   int testid_;
 };
 
@@ -190,18 +190,17 @@ class BPClassifier: public Classifier{
  public:
   ~BPClassifier(){}
   void Init(int thread_id, int grp_id, int id) override;
-  void TrainOneBatch(int step, Metric* perf) override;
   void TestOneBatch(int step, Metric* perf) override;
+  //void TrainOneBatch(int step, Metric* perf) override;
   //void TestOneBatch(int step, Phase phase, shared_ptr<NeuralNet> net, Metric* perf) override;
 
   void Forward(int step, Phase phase, shared_ptr<NeuralNet> net, Metric* perf);
-  void Backward(int step, shared_ptr<NeuralNet> net);
 };
 
 class CDClassifier: public Classifier{
  public:
-  void TrainOneBatch(int step, Metric* perf) override;
   void TestOneBatch(int step, Metric* perf) override;
+  //void TrainOneBatch(int step, Metric* perf) override;
   //void TestOneBatch(int step, Phase phase, shared_ptr<NeuralNet> net, Metric* perf) override;
 };
 /*CLEE

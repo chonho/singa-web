@@ -61,8 +61,6 @@ void Driver::Init(int argc, char **argv) {
   RegisterLayer<SplitLayer, int>(kSplit);
   RegisterLayer<TanhLayer, int>(kTanh);
   
-  RegisterLayer<InputLayer, int>(kInput);
-  RegisterLayer<OutputLayer, int>(kOutput);
 #ifdef USE_LMDB
   RegisterLayer<LMDBDataLayer, int>(kLMDBData);
 #endif
@@ -122,12 +120,12 @@ void Driver::Submit(bool resume, const JobProto& jobConf) {
 	Trainer trainer;
 	trainer.Start(resume, singa_conf_, &job);
   }
-  else if( mode_ == 2 ) { // testing
-	Tester tester;
+  else if( mode_ == 2 ) {  // predict(i.e, classify) 
+	Predictor predictor;
   	HttpRequestHandler rh;
-	tester.Start(resume, singa_conf_, &job, rh.ptr_classifiers(), num_classifiers_); 
-	rh.Start();
+	predictor.Start(resume, singa_conf_, &job, rh.ptr_classifiers(), num_classifiers_); 
 	//tester.Start(resume, singa_conf_, &job, &classifiers_, num_classifiers_); 
+	rh.Start();
   }
 
 }

@@ -580,10 +580,11 @@ void RGBImageLayer::ParseRecords(int flag,
     const vector<Record>& records, Blob<float>* blob){
   if ((flag & kForward) == 0)
     return;
-  
+
   const vector<int>& s=blob->shape();
   auto images = Tensor4(&data_);
   const SingleLabelImageRecord& r=records.at(0).image();
+
   Tensor<cpu, 3> raw_image(Shape3(r.shape(0),r.shape(1),r.shape(2)));
   AllocSpace(raw_image);
   Tensor<cpu, 3> croped_image(nullptr, Shape3(s[1],s[2],s[3]));
@@ -858,7 +859,7 @@ void SoftmaxLossLayer::ComputeGradient(int flag) {
 }
 
 
-/***************Implementation for InputLayer**************************/
+/***************Implementation for InputLayer**************************
 void InputLayer::ComputeFeature(int flag, Metric* perf){
    //LOG(ERROR) << "input layer compute";
   
@@ -878,7 +879,7 @@ void InputLayer::ComputeFeature(int flag, Metric* perf){
       } 
       usleep(1000); //sleep for 1 second
    }
-  /* 
+  //// 
       struct stat buffer;   
       if(stat(inputFilePath_.c_str(), &buffer) == 0){ // file exist
          Record& record = records_.at(0);
@@ -886,7 +887,7 @@ void InputLayer::ComputeFeature(int flag, Metric* perf){
          //LOG(ERROR) << record.mutable_image()->shape().size();
          //remove(inputFilePath_.c_str()); 
       } 
-  */
+  /////
 }
 
 void InputLayer::Setup(const LayerProto& proto, int npartitions) {
@@ -901,8 +902,9 @@ void InputLayer::Setup(const LayerProto& proto, int npartitions) {
   
   records_.resize(1); 
 }
+********************************************************************/
 
-/********** * Implementation for OutputLayer*************************/
+/********** * Implementation for OutputLayer*************************
  
 void OutputLayer::Setup(const LayerProto& proto, int npartitions) {
   //LOG(ERROR) << "output layer setup";
@@ -976,9 +978,8 @@ void OutputLayer::ComputeFeature(int flag, Metric* perf) {
   obj.insert(map<string,value>::value_type("Data", aval));
   value json(obj);
   outputMessage_ = json.serialize().c_str();
-  
-
 }
+*****************************************************************/
 
 
 }  // namespace singa

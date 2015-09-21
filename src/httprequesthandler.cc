@@ -3,7 +3,7 @@
 
 namespace singa {
 
-#define PORT		8888
+#define PORT		8080
 
 #define POSTBUFFERSIZE  512
 #define MAXNAMESIZE     20
@@ -161,7 +161,7 @@ static int HttpRequestHandler::answer_to_connection (void *cls,
 	  while((idx = handler->getIndex())==-1);
 	  //printf("---available classifier[%d]\n",idx);
 	  Classifier* classifier = handler->classifiers_[idx];
-	  classifier->setTestImage( con_info->imagepath, con_info->testid );
+	  //classifier->setTestImage( con_info->imagepath, con_info->testid );
 	  classifier->Load();
           handler->is_available_[idx] = false;
 	  classifier->Run( &output );
@@ -206,18 +206,12 @@ static void HttpRequestHandler::request_completed (void *cls,
 static int controlid = 0;
 void sigcatch(int sig) {
     printf("---signal %d: ", sig);
-    if(sig == SIGUSR1) controlid = (controlid==1 ? 2 : 1); 
     if(sig == SIGUSR2) controlid = 3; 
     usleep(1000);
 }
 
 int HttpRequestHandler::Start() {
 
-
-  if (SIG_ERR == signal(SIGUSR1, sigcatch)) {
-        printf("failed to set signal handler.n");
-        exit(1);
-  }
   if (SIG_ERR == signal(SIGUSR2, sigcatch)) {
         printf("failed to set signal handler.n");
         exit(1);
@@ -225,16 +219,16 @@ int HttpRequestHandler::Start() {
 
   struct MHD_Daemon *daemon;
     
-  do {
-      // 1: start
+      /*
       while( controlid != 1 && controlid !=3 ) usleep(1000);
       printf(""); // TODO if remove, it does not work...
 
       if(controlid == 3) {
          // 3: terminated 
-         printf("Server Terminated");
+         printf("Server Terminated\n");
 	 break;
       }
+      */
 
       this->Setup();
 
@@ -245,15 +239,13 @@ int HttpRequestHandler::Start() {
                              MHD_OPTION_END);
 
       if (NULL == daemon) return 1;
-      printf("Server Starts\n");
+      printf("Server Starts \n");
 
-      // 2: pause 
-      while( controlid != 2) usleep(1000);
+      while( controlid != 3) usleep(1000);
 
       MHD_stop_daemon (daemon);
       printf("Server Stops (pause) \n");
   
-  } while( controlid < 3);    
 
   return 0;
 

@@ -126,6 +126,9 @@ class Layer {
   virtual int type() const {
     return layer_proto_.type();
   }
+  virtual std::string user_type() const {
+    return layer_proto_.user_type();
+  }
   /**
    * Return name of this layer
    */
