@@ -1,0 +1,18 @@
+package singa;
+import "job.proto";
+
+extend LayerProto {
+  optional InputProto input_conf = 150;
+  optional OutputProto output_conf = 151;
+}
+
+message InputProto {
+  required string path = 1;
+}
+
+message OutputProto {
+  required string path = 1;
+  optional int32 topk = 2;
+  optional float scale = 3;
+}
+
